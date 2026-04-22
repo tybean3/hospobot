@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="roo">
+
+    <xacro:property name="ref_height" value="0.1151"/> 
+    <xacro:property name="shell_l" value="0.520"/>
+    <xacro:property name="shell_w" value="0.500"/>
+    <xacro:property name="shell_h" value="0.368"/>
+    
+    <xacro:property name="wheel_radius" value="0.0625"/>
+    <xacro:property name="track_width" value="0.280"/>
+    <xacro:property name="axle_z_offset" value="-0.0526"/>
+
+    <link name="base_footprint"/>
+
+    <joint name="base_joint" type="fixed">
+        <parent link="base_footprint"/>
+        <child link="base_link"/>
+        <origin xyz="0 0 ${ref_height}" rpy="0 0 0"/>
+    </joint>
+
+    <link name="base_link"/>
+
+    <xacro:macro name="wheel" params="prefix y_reflect">
+        <link name="${prefix}_wheel">
+            <visual>
+                <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+                <geometry>
+                    <cylinder radius="${wheel_radius}" length="0.0172"/>
+                </geometry>
+                <material name="black"><color rgba="0.1 0.1 0.1 1"/></material>
+            </visual>
+        </link>
+
+        <joint name="${prefix}_wheel_joint" type="continuous">
+            <parent link="base_link"/>
+            <child link="${prefix}_wheel"/>
+            <origin xyz="0 ${y_reflect * (track_width/2)} ${axle_z_offset}" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+        </joint>
+    </xacro:macro>
+
+    <xacro:wheel prefix="left" y_reflect="1" />
+    <xacro:wheel prefix="right" y_reflect="-1" />
+
+    <xacro:macro name="caster" params="prefix x_reflect">
+        <link name="${prefix}_caster">
+            <visual>
+                <geometry><sphere radius="0.025"/></geometry>
+                <material name="grey"><color rgba="0.5 0.5 0.5 1"/></material>
+            </visual>
+        </link>
+        <joint name="${prefix}_caster_joint" type="fixed">
+            <parent link="base_link"/>
+            <child link="${prefix}_caster"/>
+            <origin xyz="${x_reflect * 0.160} 0 -0.0901" rpy="0 0 0"/>
+        </joint>
+    </xacro:macro>
+
+    <xacro:caster prefix="front" x_reflect="1" />
+    <xacro:caster prefix="back" x_reflect="-1" />
+
+    <link name="laser_frame"/>
+    <joint name="laser_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link="laser_frame"/>
+        <origin xyz="0 0 0.300" rpy="0 0 0"/>
+    </joint>
+
+    <link name="imu_link"/>
+    <joint name="imu_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link="imu_link"/>
+        <origin xyz="0 0 -0.090" rpy="0 0 0"/>
+    </joint>
+
+    <link name="chassis_visual">
+        <visual>
+            <origin xyz="0 0 ${shell_h/2}" rpy="0 0 0"/>
+            <geometry><box size="${shell_l} ${shell_w} ${shell_h}"/></geometry>
+            <material name="white"><color rgba="1 1 1 1"/></material>
+        </visual>
+    </link>
+    <joint name="chassis_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link="chassis_visual"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+</robot>
