@@ -1,7 +1,8 @@
 build/
 install/
 log/
-venv/
+
 __pycache__/
 *.pyc
-.colcon/
+
+.DS_Store
