@@ -102,7 +102,7 @@ def generate_launch_description():
     # 6. Web Dashboard Server
     web_server = ExecuteProcess(
         cmd=['python3', '-m', 'http.server', '8000'],
-        cwd='/home/hospobot/ros2_ws/web_dash/',
+        cwd='/home/hospobot/hospobot_ws/web_dash/',
         output='screen'
     )
 
@@ -135,6 +135,27 @@ def generate_launch_description():
         parameters=[slam_config_path]
     )
 
+    # 10. Intel RealSense Camera
+    realsense_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(get_package_share_directory('realsense2_camera'), 'launch', 'rs_launch.py')
+        ),
+        launch_arguments={
+            'depth_module.depth_profile': '640x480x30',
+            'rgb_camera.color_profile': '640x480x30',
+            'align_depth.enable': 'true',
+            'pointcloud.enable': 'true'
+        }.items()
+    )
+
+    # 11. Object Detector Node (Semantic Obstacle Detection)
+    object_detector_node = Node(
+        package='hospobot_perception',
+        executable='object_detector',
+        name='object_detector',
+        output='screen'
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='false', description='Use simulation (Gazebo) clock if true'),
         robot_state_publisher_node,
@@ -147,5 +168,7 @@ def generate_launch_description():
         ekf_node,
         slam_node,
         nav2_manager_node,
-        web_server
+        web_server,
+        realsense_node,
+        object_detector_node
     ])
