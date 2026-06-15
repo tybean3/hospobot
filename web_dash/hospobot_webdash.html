@@ -203,10 +203,21 @@
             grid-area: odom;
         }
 
-        #node_imu { grid-area: imu; }
-        #node_ekf { grid-area: ekf; }
-        #node_slam { grid-area: slam; }
-        #topic_cmd_out { grid-area: cmd_out; }
+        #node_imu {
+            grid-area: imu;
+        }
+
+        #node_ekf {
+            grid-area: ekf;
+        }
+
+        #node_slam {
+            grid-area: slam;
+        }
+
+        #topic_cmd_out {
+            grid-area: cmd_out;
+        }
 
         .network-item {
             color: var(--text-color);
@@ -268,7 +279,7 @@
 
         .network-item .type {
             font-size: 0.6rem;
-            color: rgba(255,255,255,0.5);
+            color: rgba(255, 255, 255, 0.5);
             text-transform: uppercase;
             margin-bottom: 2px;
         }
@@ -1086,6 +1097,115 @@
         .number-input:focus {
             border-color: var(--accent-blue);
         }
+
+        /* --- SEMANTIC DEBUG VIEW --- */
+        .semantic-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            gap: 20px;
+        }
+
+        .radar-panel {
+            flex: 1;
+            background: rgba(30, 41, 59, 0.85);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .radar-panel h3 {
+            margin-top: 0;
+            color: #e2e8f0;
+            border-bottom: 2px solid var(--accent-blue);
+            padding-bottom: 10px;
+            font-size: 1.3rem;
+            width: 100%;
+            text-align: center;
+        }
+
+        #semantic-radar {
+            background-color: #0f172a;
+            border: 2px solid #38bdf8;
+            border-radius: 50%;
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.15), inset 0 0 40px rgba(56, 189, 248, 0.1);
+            margin-top: 10px;
+        }
+
+        .data-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .semantic-card {
+            background: rgba(15, 23, 42, 0.9);
+            border-left: 4px solid var(--functional-border);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .semantic-card.low-conf {
+            border-left-color: #f59e0b;
+        }
+
+        .semantic-info h4 {
+            margin: 0 0 5px 0;
+            color: #f8fafc;
+            font-size: 1.2rem;
+            text-transform: capitalize;
+        }
+
+        .semantic-info .id-tag {
+            background: #334155;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: #cbd5e1;
+            margin-left: 10px;
+            vertical-align: super;
+        }
+
+        .semantic-details {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .semantic-details span {
+            color: #38bdf8;
+            font-weight: bold;
+        }
+
+        .semantic-console {
+            margin-top: auto;
+            background: #000;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            font-family: monospace;
+            font-size: 0.8rem;
+            height: 150px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 
@@ -1097,6 +1217,9 @@
                 Network</button>
             <button id="btn-status" class="nav-btn" onclick="switchView('view-status', 'btn-status')">
                 Status</button>
+            <button id="btn-semantic" class="nav-btn" onclick="switchView('view-semantic', 'btn-semantic')">Semantic
+                Debug
+            </button>
             <button id="btn-settings" class="nav-btn" onclick="switchView('view-settings', 'btn-settings')">Robot
             </button>
         </div>
@@ -1242,6 +1365,24 @@
         </div>
     </div>
 
+    <div id="view-semantic" class="view-container">
+        <h1 class="network-header" style="margin-top: 30px;">Semantic <span>Debug</span></h1>
+        <div class="semantic-container">
+            <div class="radar-panel">
+                <h3>Live Radar (Top-Down)</h3>
+                <canvas id="semantic-radar" width="500" height="500"></canvas>
+            </div>
+            <div class="data-panel">
+                <div id="semantic-cards-container">
+                    <p style="color: #64748b; text-align: center; margin-top: 40px;">No objects tracked currently.</p>
+                </div>
+                <div class="semantic-console" id="semantic-console">
+                    > Awaiting semantic data on /semantic/tracked_objects...
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="view-settings" class="view-container">
         <h1 class="network-header" style="margin-top: 30px;"><span>Settings</span></h1>
 
@@ -1270,10 +1411,12 @@
                             onclick="recalibrateMotor('left', this)">Recalibrate</button>
                         <button class="btn-restart" id="btn-reboot-left" onclick="rebootMotor('left', this)"
                             style="background: #dc2626;">Reboot</button>
-                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-top: 5px;">
+                        <div
+                            style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-top: 5px;">
                             <span>IDLE</span>
                             <label class="toggle-switch" style="transform: scale(0.7); margin: 0;">
-                                <input type="checkbox" id="toggle-state-left" checked onchange="setMotorState('left', this.checked)">
+                                <input type="checkbox" id="toggle-state-left" checked
+                                    onchange="setMotorState('left', this.checked)">
                                 <span class="slider"></span>
                             </label>
                             <span>CL-VEL</span>
@@ -1295,10 +1438,12 @@
                             onclick="recalibrateMotor('right', this)">Recalibrate</button>
                         <button class="btn-restart" id="btn-reboot-right" onclick="rebootMotor('right', this)"
                             style="background: #dc2626;">Reboot</button>
-                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-top: 5px;">
+                        <div
+                            style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-top: 5px;">
                             <span>IDLE</span>
                             <label class="toggle-switch" style="transform: scale(0.7); margin: 0;">
-                                <input type="checkbox" id="toggle-state-right" checked onchange="setMotorState('right', this.checked)">
+                                <input type="checkbox" id="toggle-state-right" checked
+                                    onchange="setMotorState('right', this.checked)">
                                 <span class="slider"></span>
                             </label>
                             <span>CL-VEL</span>
@@ -1420,6 +1565,8 @@
         const stateRPub = new ROSLIB.Topic({ ros: ros, name: '/odesc_hardware/state_right', messageType: 'std_msgs/String' });
         const settingsPub = new ROSLIB.Topic({ ros: ros, name: '/odesc_hardware/settings', messageType: 'std_msgs/String' });
 
+
+        // if door -> dont explode
         // ROS Subscribers
         const odomSub = new ROSLIB.Topic({ ros: ros, name: '/odom', messageType: 'nav_msgs/Odometry' });
         odomSub.subscribe(function (msg) {
@@ -1553,6 +1700,15 @@
 
         // --- NETWORK GRAPH SETUP ---
         const networkEntities = [
+            { id: 'node_camera', name: '/oakd_yolo_node', type: 'Node', shape: 'shape-node' },
+            { id: 'node_proj', name: '/semantic_projection_node', type: 'Node', shape: 'shape-node' },
+            { id: 'node_tracker', name: '/semantic_tracker_node', type: 'Node', shape: 'shape-node' },
+            { id: 'node_cost_bridge', name: '/semantic_costmap_bridge', type: 'Node', shape: 'shape-node' },
+            { id: 'topic_pts_rgb', name: '/oakd/points & image', type: 'Topic', shape: 'shape-rect' },
+            { id: 'topic_dets', name: '/oakd/detections', type: 'Topic', shape: 'shape-rect' },
+            { id: 'topic_raw_obj', name: '/semantic/raw_objects', type: 'Topic', shape: 'shape-rect' },
+            { id: 'topic_track_obj', name: '/semantic/tracked_objects', type: 'Topic', shape: 'shape-rect' },
+            { id: 'topic_sem_map', name: '/semantic/obstacle_cloud', type: 'Topic', shape: 'shape-rect' },
             { id: 'node_lidar', name: '/sllidar_node', type: 'Node', shape: 'shape-node' },
             { id: 'node_imu', name: '/bno086_node', type: 'Node', shape: 'shape-node' },
             { id: 'node_ekf', name: '/ekf_filter_node', type: 'Node', shape: 'shape-node' },
@@ -1574,6 +1730,15 @@
         ];
 
         const networkLinks = [
+            { source: 'node_camera', target: 'topic_pts_rgb', path: 'fluid' },
+            { source: 'node_camera', target: 'topic_dets', path: 'fluid' },
+            { source: 'topic_pts_rgb', target: 'node_proj', path: 'fluid' },
+            { source: 'topic_dets', target: 'node_proj', path: 'fluid' },
+            { source: 'node_proj', target: 'topic_raw_obj', path: 'fluid' },
+            { source: 'topic_raw_obj', target: 'node_tracker', path: 'fluid' },
+            { source: 'node_tracker', target: 'topic_track_obj', path: 'fluid' },
+            { source: 'topic_track_obj', target: 'node_cost_bridge', path: 'fluid' },
+            { source: 'node_cost_bridge', target: 'topic_sem_map', path: 'fluid' },
             { source: 'node_lidar', target: 'topic_scan', path: 'fluid' },
             { source: 'topic_scan', target: 'node_slam', path: 'fluid' },
             { source: 'node_slam', target: 'topic_map', path: 'fluid' },
@@ -1866,9 +2031,9 @@
             document.getElementById('modalTitle').innerText = `Echo: ${name}`;
             document.getElementById('modalBody').innerHTML = `<div id="echo-content" style="background:#000; color:#10b981; padding:15px; font-family:monospace; height:300px; overflow-y:auto; border-radius:8px; border:1px solid #334155;">Awaiting data...</div>`;
             document.getElementById('debugModal').style.display = 'block';
-            
+
             const topic = new ROSLIB.Topic({ ros: ros, name: name, messageType: 'std_msgs/String' });
-            topic.subscribe(function(message) {
+            topic.subscribe(function (message) {
                 const echoBox = document.getElementById('echo-content');
                 if (echoBox) echoBox.innerText = JSON.stringify(message, null, 2);
             });
@@ -1903,7 +2068,7 @@
                 const pub = new ROSLIB.Topic({ ros: ros, name: topicName, messageType: 'std_msgs/String' });
                 pub.publish(msg);
                 alert("Successfully published to " + topicName);
-            } catch(e) {
+            } catch (e) {
                 alert("Error: Invalid JSON payload.");
             }
         }
@@ -1989,6 +2154,105 @@
             settingsPub.publish(new ROSLIB.Message({ data: JSON.stringify(settingsData) }));
             alert("Settings applied successfully! Parameters sent to backend nodes.");
         }
+
+        // --- SEMANTIC DEBUG LOGIC ---
+        const semanticSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/semantic/tracked_objects',
+            messageType: 'hospobot_interfaces/msg/SemanticObjectArray'
+        });
+
+        semanticSub.subscribe(function (msg) {
+            if (!document.getElementById('view-semantic').classList.contains('active')) return;
+
+            const consoleEl = document.getElementById('semantic-console');
+            consoleEl.innerText = "> Received at " + new Date().toISOString() + "\n" + JSON.stringify(msg, null, 2);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+
+            const container = document.getElementById('semantic-cards-container');
+            if (!msg.objects || msg.objects.length === 0) {
+                container.innerHTML = '<p style="color: #64748b; text-align: center; margin-top: 40px;">No objects tracked currently.</p>';
+            } else {
+                let html = '';
+                msg.objects.forEach(obj => {
+                    const isLowConf = obj.confidence < 0.6;
+                    html += `
+                        <div class="semantic-card ${isLowConf ? 'low-conf' : ''}">
+                            <div class="semantic-info">
+                                <h4>${obj.class_name} <span class="id-tag">ID: ${obj.tracking_id}</span></h4>
+                                <div class="semantic-details">
+                                    <div>X: <span>${obj.position.x.toFixed(2)}m</span></div>
+                                    <div>Y: <span>${obj.position.y.toFixed(2)}m</span></div>
+                                    <div>Conf: <span style="color: ${isLowConf ? '#f59e0b' : '#10b981'}">${(obj.confidence * 100).toFixed(0)}%</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            }
+
+            // Draw Radar
+            const canvas = document.getElementById('semantic-radar');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const scale = 40; // pixels per meter
+
+            // Draw grid and rings
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+            ctx.lineWidth = 1;
+            for (let r = 1; r <= 5; r++) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, r * scale, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+            ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(canvas.width, cy); ctx.stroke();
+
+            // Draw robot
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Forward indicator
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 20); ctx.stroke();
+
+            // Draw objects
+            if (msg.objects) {
+                msg.objects.forEach(obj => {
+                    // Robot is at 0,0 facing +x. In 2D radar, +x is forward (up), +y is left (left)
+                    const px = cx - (obj.position.y * scale);
+                    const py = cy - (obj.position.x * scale);
+
+                    ctx.fillStyle = obj.confidence < 0.6 ? '#f59e0b' : '#10b981';
+                    ctx.beginPath();
+                    ctx.arc(px, py, 8, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.font = '12px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${obj.class_name} (${obj.tracking_id})`, px, py - 12);
+
+                    // Velocity vector
+                    const vx = -obj.velocity.y * scale;
+                    const vy = -obj.velocity.x * scale;
+                    if (Math.abs(vx) > 0.1 || Math.abs(vy) > 0.1) {
+                        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                        ctx.beginPath();
+                        ctx.moveTo(px, py);
+                        ctx.lineTo(px + vx, py + vy);
+                        ctx.stroke();
+                    }
+                });
+            }
+        });
     </script>
 </body>
 

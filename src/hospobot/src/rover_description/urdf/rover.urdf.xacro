@@ -85,5 +85,11 @@
         <child link="chassis_visual"/>
         <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
+    <link name="oakd_frame"/>
+    <joint name="oakd_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link="oakd_frame"/>
+        <origin xyz="0 0 0.280" rpy="0 0.2618 0"/>
+    </joint>
 
 </robot>

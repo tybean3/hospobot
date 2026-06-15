@@ -135,18 +135,38 @@ def generate_launch_description():
         parameters=[slam_config_path]
     )
 
-    # 10. Intel RealSense Camera
-    realsense_node = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(get_package_share_directory('realsense2_camera'), 'launch', 'rs_launch.py')
-        ),
-        launch_arguments={
-            'depth_module.depth_profile': '640x480x30',
-            'rgb_camera.color_profile': '640x480x30',
-            'align_depth.enable': 'true',
-            'pointcloud.enable': 'true'
-        }.items()
-    )
+    # 10. OAK-D Pro W Camera (DepthAI or Custom Fallback)
+    has_depthai_driver = False
+    try:
+        get_package_share_directory('depthai_ros_driver')
+        has_depthai_driver = True
+    except Exception:
+        pass
+
+    if has_depthai_driver:
+        camera_node = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(get_package_share_directory('depthai_ros_driver'), 'launch', 'camera.launch.py')
+            ),
+            launch_arguments={
+                'name': 'oak',
+                'parent_frame': 'oakd_frame',
+                'cam_pos_x': '0.0',
+                'cam_pos_y': '0.0',
+                'cam_pos_z': '0.0',
+                'cam_roll': '0.0',
+                'cam_pitch': '0.0',
+                'cam_yaw': '0.0'
+            }.items()
+        )
+    else:
+        camera_node = Node(
+            package='hospobot_perception',
+            executable='oakd_yolo_node',
+            name='oakd_yolo_node',
+            output='screen',
+            parameters=[{'blob_path': ''}]
+        )
 
     # 11. Object Detector Node (Semantic Obstacle Detection)
     object_detector_node = Node(
@@ -169,6 +189,7 @@ def generate_launch_description():
         slam_node,
         nav2_manager_node,
         web_server,
-        realsense_node,
+        camera_node,
         object_detector_node
     ])
+

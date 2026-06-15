@@ -1,0 +1,47 @@
+semantic_classes:
+  "Hospital Bed":
+    description: "Standard hospital beds, potentially moving with patients"
+    reference_images:
+      - "config/images/bed_dummy.jpg"
+    costmap_injection:
+      base_radius: 1.0
+      velocity_inflation_factor: 1.5
+    behavior_rules:
+      action_trigger: "yield_to_side"
+      approach_velocity_threshold: 0.5
+      priority: 1
+      
+  "Staff":
+    description: "Nurses and doctors identified by scrubs"
+    reference_images:
+      - "config/images/scrubs_dummy.jpg"
+    costmap_injection:
+      base_radius: 0.6
+      velocity_inflation_factor: 1.0
+    behavior_rules:
+      action_trigger: "wait_and_warn"
+      approach_velocity_threshold: 1.0
+      priority: 2
+      
+  "Medical Cart":
+    description: "Crash carts and medication carts"
+    reference_images: []
+    costmap_injection:
+      base_radius: 0.8
+      velocity_inflation_factor: 1.2
+    behavior_rules:
+      action_trigger: "yield_to_side"
+      approach_velocity_threshold: 0.8
+      priority: 3
+
+  "Wet Floor Sign":
+    description: "Yellow hazard signs indicating a slip risk or blocked area"
+    reference_images: []
+    costmap_injection:
+      base_radius: 2.5
+      velocity_inflation_factor: 1.0
+      forces_reroute: true
+    behavior_rules:
+      action_trigger: "replan"
+      approach_velocity_threshold: 0.0
+      priority: 1
