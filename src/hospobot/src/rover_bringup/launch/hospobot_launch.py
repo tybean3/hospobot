@@ -80,12 +80,14 @@ def generate_launch_description():
         executable='sllidar_node',
         name='sllidar_node',
         parameters=[{'channel_type': 'serial',
-                     'serial_port': '/dev/ttyUSB2', # Adjust depending on actual udev rules
+                     'serial_port': '/dev/ttyUSB1', # Adjust depending on actual udev rules
                      'serial_baudrate': 115200,
                      'frame_id': 'laser_frame',
                      'inverted': False,
                      'angle_compensate': True}],
-        output='screen'
+        output='screen',
+        respawn=True,
+        respawn_delay=2.0
     )
 
     # 4. Nav2 Bringup (Navigation Stack) - REMOVED from auto-start

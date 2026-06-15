@@ -74,7 +74,7 @@ class ObjectDetectorNode(Node):
                 
                 # 1. Color Histogram (for clothes/scrubs)
                 hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-                hist = cv2.calcHist([hsv], [0, 1], None, [30, 32], [0, 180, 0, 256])
+                hist = cv2.calcHist([hsv], [0, 1, 2], None, [10, 10, 4], [0, 180, 0, 256, 0, 256])
                 cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
                 
                 # 2. ORB Features (for textured objects like equipment)
@@ -92,42 +92,35 @@ class ObjectDetectorNode(Node):
         self.get_logger().info(f"Loaded {count} reference images across {len(self.references)} classes.")
 
     def match_reference(self, roi):
-        if not self.references or roi.size == 0:
-            return "Unknown", 0.0
+        if roi.size == 0:
+            return "UNKNOWN", 0.0
             
-        # ROI Color Hist
         hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-        roi_hist = cv2.calcHist([hsv_roi], [0, 1], None, [30, 32], [0, 180, 0, 256])
-        cv2.normalize(roi_hist, roi_hist, 0, 1, cv2.NORM_MINMAX)
         
-        # ROI ORB Features
-        gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        kp_roi, des_roi = self.orb.detectAndCompute(gray_roi, None)
+        # Consider the center 50% of the ROI to avoid background noise
+        h, w = hsv_roi.shape[:2]
+        ch, cw = max(1, int(h*0.5)), max(1, int(w*0.5))
+        cy, cx = h//2, w//2
+        center_roi = hsv_roi[cy - ch//2 : cy + ch//2, cx - cw//2 : cx + cw//2]
         
-        best_label = "Unknown"
-        best_score = -1.0
+        if center_roi.size == 0:
+            center_roi = hsv_roi
+            
+        mean_h = np.mean(center_roi[:, :, 0])
+        mean_s = np.mean(center_roi[:, :, 1])
+        mean_v = np.mean(center_roi[:, :, 2])
         
-        for label, refs in self.references.items():
-            for ref in refs:
-                # Color correlation
-                color_score = cv2.compareHist(roi_hist, ref['hist'], cv2.HISTCMP_CORREL)
-                
-                # ORB matching score
-                orb_score = 0.0
-                if des_roi is not None and ref['des'] is not None:
-                    matches = self.bf.match(des_roi, ref['des'])
-                    if len(matches) > 10:
-                        # Normalize match count by min features
-                        orb_score = len(matches) / min(len(des_roi), len(ref['des']))
-                
-                # Combined score (weighted)
-                combined_score = color_score * 0.7 + orb_score * 0.3
-                
-                if combined_score > best_score:
-                    best_score = combined_score
-                    best_label = label
-                    
-        return best_label, best_score
+        # Simple thresholding based on average brightness (Value), color (Saturation), and Hue
+        if mean_v > 120 and mean_s < 70:
+            return "WHITE_SHIRT", 1.0
+        elif mean_v < 60:
+            return "BLACK_SHIRT", 1.0
+        elif 60 <= mean_v <= 120 and mean_s < 70:
+            return "GREY_SHIRT", 1.0
+        elif (mean_h < 25 or mean_h > 165) and mean_s >= 70 and mean_v < 150:
+            return "BROWN_SHIRT", 1.0
+        else:
+            return "UNKNOWN", 0.0
 
     def camera_info_callback(self, msg):
         self.camera_info = msg
@@ -247,6 +240,8 @@ class ObjectDetectorNode(Node):
         if "BED" in label: return (0, 165, 255) # Orange
         if "BLACK" in label: return (50, 50, 50) # Dark Gray
         if "WHITE" in label: return (200, 200, 200) # Light Gray
+        if "GREY" in label: return (128, 128, 128) # Medium Gray
+        if "BROWN" in label: return (19, 69, 139) # Brown (BGR)
         return (0, 255, 0) # Green
 
     def publish_marker(self, x, y, z, w, h, id, label):

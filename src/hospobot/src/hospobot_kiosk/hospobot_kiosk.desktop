@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Exec=bash -c "source /opt/ros/jazzy/setup.bash && source /home/hospobot/hospobot_ws/install/setup.bash && python3 /home/hospobot/hospobot_ws/src/hospobot/src/hospobot_kiosk/kiosk_app.py"
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=Hospobot Kiosk
+Comment=Hospobot status kiosk running on ROS 2
