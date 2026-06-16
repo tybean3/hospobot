@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "Setting up ROS 2 Jazzy rover environment..."
+echo "Setting up ROS 2 Jazzy Hospobot environment..."
 
 # 1. Install dependencies
 sudo apt update
@@ -48,10 +48,10 @@ if ! grep -q "export ROS_DOMAIN_ID=42" ~/.bashrc; then
 fi
 
 echo "=================================================="
-echo "         Rover Environment Setup Complete!        "
+echo "         Hospobot Environment Setup Complete!     "
 echo "=================================================="
 echo "Next steps:"
 echo "1. Source your terminal: source ~/.bashrc"
 echo "2. Build the workspace: cd ~/ros2_ws && colcon build"
 echo "3. Source the install: source install/setup.bash"
-echo "4. Launch: ros2 launch rover_bringup robot_launch.py"
+echo "4. Launch: ros2 launch hospobot_bringup hospobot_launch.py"

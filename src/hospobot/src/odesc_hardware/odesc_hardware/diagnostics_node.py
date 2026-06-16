@@ -26,6 +26,8 @@ class DiagnosticsNode(Node):
         diag_data = {
             'battery': 85,
             'ping': 15,
+            'raw_nodes': nodes,
+            'raw_topics': topics,
             'nodes': {
                 'node_lidar': 'FUNCTIONAL' if any(n in nodes for n in ['sllidar_node', 'rplidar_node']) else 'OFFLINE',
                 'node_imu': 'FUNCTIONAL' if 'bno086_node' in nodes else 'OFFLINE',

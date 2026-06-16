@@ -5,9 +5,11 @@ import cv2
 import numpy as np
 import os
 from sensor_msgs.msg import Image, CameraInfo
-from visualization_msgs.msg import Marker
+from vision_msgs.msg import Detection2DArray, Detection2D, ObjectHypothesisWithPose, BoundingBox2D
 from cv_bridge import CvBridge
+from rclpy.qos import qos_profile_sensor_data
 import message_filters
+import math
 
 class ObjectDetectorNode(Node):
     def __init__(self):
@@ -30,20 +32,20 @@ class ObjectDetectorNode(Node):
         # Load reference images for object/staff matching
         self.load_reference_images()
         
-        # Subscriptions using message_filters to synchronize color and depth
-        self.color_sub = message_filters.Subscriber(self, Image, '/camera/camera/color/image_raw')
-        self.depth_sub = message_filters.Subscriber(self, Image, '/camera/camera/aligned_depth_to_color/image_raw')
+        # Subscriptions to OAK-D topics
+        self.color_sub = message_filters.Subscriber(self, Image, '/oakd/rgb/image_rect', qos_profile=qos_profile_sensor_data)
+        self.depth_sub = message_filters.Subscriber(self, Image, '/oakd/depth/image_rect', qos_profile=10)
         
         # ApproximateTimeSynchronizer
         self.ts = message_filters.ApproximateTimeSynchronizer([self.color_sub, self.depth_sub], 10, 0.1)
         self.ts.registerCallback(self.sync_callback)
         
         # Camera Info subscriber to get intrinsic parameters
-        self.camera_info_sub = self.create_subscription(CameraInfo, '/camera/camera/color/camera_info', self.camera_info_callback, 10)
+        self.camera_info_sub = self.create_subscription(CameraInfo, '/oakd/camera_info', self.camera_info_callback, 10)
         self.camera_info = None
         
         # Publishers
-        self.marker_pub = self.create_publisher(Marker, '/human_bbox_marker', 10)
+        self.det_pub = self.create_publisher(Detection2DArray, '/oakd/detections', 10)
         self.image_pub = self.create_publisher(Image, '/human_detector/debug_image', 10)
         
         self.get_logger().info("Hospital Object & Human detector node started.")
@@ -161,6 +163,9 @@ class ObjectDetectorNode(Node):
             for i, face in enumerate(faces):
                 detections.append({'box': face, 'is_face': True, 'type': 'Face'})
         
+        det_msg = Detection2DArray()
+        det_msg.header = color_msg.header
+        
         for i, det in enumerate(detections):
             x, y, w, h = det['box']
             roi = self.get_shirt_roi(color_image, det['box'], det['is_face'])
@@ -174,39 +179,34 @@ class ObjectDetectorNode(Node):
             # Use a slightly lower threshold for better recall
             final_label = label.upper() if score > 0.35 else "UNKNOWN"
             
-            # Depth/3D
-            cx, cy = x + w // 2, y + h // 2
-            z_val = self.get_depth_at(depth_image, cx, cy)
+            # Output Detection2D
+            d2d = Detection2D()
+            d2d.header = color_msg.header
+            d2d.bbox.center.position.x = float(x + w / 2) / color_image.shape[1]
+            d2d.bbox.center.position.y = float(y + h / 2) / color_image.shape[0]
+            d2d.bbox.size_x = float(w) / color_image.shape[1]
+            d2d.bbox.size_y = float(h) / color_image.shape[0]
             
-            if z_val > 0:
-                real_x, real_y, real_z = self.project_3d(cx, cy, z_val)
+            hyp = ObjectHypothesisWithPose()
+            hyp.hypothesis.class_id = final_label
+            hyp.hypothesis.score = float(score) if score > 0.35 else 0.5
+            d2d.results.append(hyp)
+            
+            det_msg.detections.append(d2d)
                 
-                # If it's a face, we want the marker to represent the whole person
-                if det['is_face']:
-                    # Estimate person dimensions based on face size
-                    width_3d = w * z_val / self.camera_info.k[0] * 3.0 # Body is wider than face
-                    height_3d = h * z_val / self.camera_info.k[4] * 6.0 # Person is ~6x face height
-                    # Offset the marker center to the torso (below the face)
-                    real_y += height_3d * 0.4
-                else:
-                    width_3d = w * z_val / self.camera_info.k[0]
-                    height_3d = h * z_val / self.camera_info.k[4]
-                
-                print(f"{det['type']} {i}: {final_label} at {real_z:.2f}m")
-                
-                # Draw on Debug Image
-                color = self.get_color_for_label(final_label)
-                cv2.rectangle(debug_image, (x, y), (x + w, y + h), color, 2)
-                # Also draw the ROI we are using for matching to show the user what we see
-                if det['is_face']:
-                    rx, ry, rw, rh = self.get_roi_coords(color_image.shape, det['box'], True)
-                    cv2.rectangle(debug_image, (rx, ry), (rx + rw, ry + rh), (255, 0, 255), 1)
-                
-                cv2.putText(debug_image, f"{final_label} {real_z:.2f}m", (x, y - 10), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-                
-                # Publish Marker
-                self.publish_marker(real_x, real_y, real_z, width_3d, height_3d, i, final_label)
+            # Draw on Debug Image
+            color = self.get_color_for_label(final_label)
+            cv2.rectangle(debug_image, (x, y), (x + w, y + h), color, 2)
+            # Also draw the ROI we are using for matching to show the user what we see
+            if det['is_face']:
+                rx, ry, rw, rh = self.get_roi_coords(color_image.shape, det['box'], True)
+                cv2.rectangle(debug_image, (rx, ry), (rx + rw, ry + rh), (255, 0, 255), 1)
+            
+            cv2.putText(debug_image, f"{final_label}", (x, y - 10), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            
+        if det_msg.detections:
+            self.det_pub.publish(det_msg)
 
         self.image_pub.publish(self.bridge.cv2_to_imgmsg(debug_image, encoding='bgr8'))
 
@@ -228,19 +228,6 @@ class ObjectDetectorNode(Node):
         rx, ry, rw, rh = self.get_roi_coords(image.shape, box, is_face)
         return image[ry:ry+rh, rx:rx+rw]
 
-    def get_depth_at(self, depth_image, cx, cy):
-        h, w = depth_image.shape
-        cx, cy = max(0, min(cx, w-1)), max(0, min(cy, h-1))
-        # Use a larger patch for depth to handle noise
-        patch = depth_image[max(0, cy-15):min(h, cy+15), max(0, cx-15):min(w, cx+15)]
-        valid = patch[patch > 0]
-        return np.median(valid) / 1000.0 if len(valid) > 0 else 0.0
-
-    def project_3d(self, u, v, z):
-        fx, cx_cam = self.camera_info.k[0], self.camera_info.k[2]
-        fy, cy_cam = self.camera_info.k[4], self.camera_info.k[5]
-        return (u - cx_cam) * z / fx, (v - cy_cam) * z / fy, z
-
     def get_color_for_label(self, label):
         if "NURSE" in label: return (255, 255, 0) # Cyan
         if "DOCTOR" in label: return (255, 255, 255) # White
@@ -248,18 +235,6 @@ class ObjectDetectorNode(Node):
         if "BLACK" in label: return (50, 50, 50) # Dark Gray
         if "WHITE" in label: return (200, 200, 200) # Light Gray
         return (0, 255, 0) # Green
-
-    def publish_marker(self, x, y, z, w, h, id, label):
-        marker = Marker()
-        # Ensure we use the correct optical frame for alignment
-        marker.header.frame_id = "camera_color_optical_frame"
-        marker.header.stamp = self.get_clock().now().to_msg()
-        marker.ns = "objects"; marker.id = id; marker.type = Marker.CUBE
-        marker.pose.position.x, marker.pose.position.y, marker.pose.position.z = x, y, z
-        marker.scale.x, marker.scale.y, marker.scale.z = w, h, 0.4
-        c = self.get_color_for_label(label)
-        marker.color.r, marker.color.g, marker.color.b, marker.color.a = c[2]/255.0, c[1]/255.0, c[0]/255.0, 0.6
-        self.marker_pub.publish(marker)
 
 def main(args=None):
     rclpy.init(args=args)

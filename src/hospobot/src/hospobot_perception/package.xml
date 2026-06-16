@@ -3,7 +3,7 @@
 <package format="3">
   <name>hospobot_perception</name>
   <version>0.0.1</version>
-  <description>Perception package for the Hospital Delivery Robot</description>
+  <description>Perception package for the Hospobot</description>
   <maintainer email="hospobot@todo.todo">hospobot</maintainer>
   <license>TODO: License declaration</license>
 

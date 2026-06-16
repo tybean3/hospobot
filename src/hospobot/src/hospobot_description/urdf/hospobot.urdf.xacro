@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="roo">
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="hospobot">
 
     <xacro:property name="ref_height" value="0.1151"/> 
     <xacro:property name="shell_l" value="0.520"/>
@@ -16,6 +16,13 @@
         <parent link="base_footprint"/>
         <child link="base_link"/>
         <origin xyz="0 0 ${ref_height}" rpy="0 0 0"/>
+    </joint>
+
+    <link name="virtual_laser_link"/>
+    <joint name="virtual_laser_joint" type="fixed">
+        <parent link="base_footprint"/>
+        <child link="virtual_laser_link"/>
+        <origin xyz="0 0 0.001" rpy="0 0 0"/>
     </joint>
 
     <link name="base_link"/>
@@ -89,7 +96,7 @@
     <joint name="oakd_joint" type="fixed">
         <parent link="base_link"/>
         <child link="oakd_frame"/>
-        <origin xyz="0 0 0.280" rpy="0 0.2618 0"/>
+        <origin xyz="0 0 1.1725" rpy="0 0.34906585 0"/>
     </joint>
 
 </robot>

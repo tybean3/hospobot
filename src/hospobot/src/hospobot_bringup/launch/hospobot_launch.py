@@ -10,16 +10,16 @@ from launch_ros.actions import Node
 def generate_launch_description():
 
     # Package Directories
-    rover_description_dir = get_package_share_directory('rover_description')
-    rover_bringup_dir = get_package_share_directory('rover_bringup')
+    hospobot_description_dir = get_package_share_directory('hospobot_description')
+    hospobot_bringup_dir = get_package_share_directory('hospobot_bringup')
     nav2_bringup_dir = get_package_share_directory('nav2_bringup')
 
     # Arguments
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
-    map_yaml_file = os.path.join(rover_bringup_dir, 'maps', 'hospital_map.yaml')
+    map_yaml_file = os.path.join(hospobot_bringup_dir, 'maps', 'hospital_map.yaml')
 
     # Xacro parsing
-    urdf_file = os.path.join(rover_description_dir, 'urdf', 'rover.urdf.xacro')
+    urdf_file = os.path.join(hospobot_description_dir, 'urdf', 'hospobot.urdf.xacro')
 
     # 1. Robot State Publisher
     robot_state_publisher_node = Node(
@@ -74,19 +74,19 @@ def generate_launch_description():
         )
     )
 
-    # 3. Lidar Node (sllidar_ros2)
-    sllidar_node = Node(
-        package='sllidar_ros2',
-        executable='sllidar_node',
-        name='sllidar_node',
-        parameters=[{'channel_type': 'serial',
-                     'serial_port': '/dev/ttyUSB2', # Adjust depending on actual udev rules
-                     'serial_baudrate': 115200,
-                     'frame_id': 'laser_frame',
-                     'inverted': False,
-                     'angle_compensate': True}],
-        output='screen'
-    )
+    # 3. Lidar Node (sllidar_ros2) - REMOVED
+    # sllidar_node = Node(
+    #     package='sllidar_ros2',
+    #     executable='sllidar_node',
+    #     name='sllidar_node',
+    #     parameters=[{'channel_type': 'serial',
+    #                  'serial_port': '/dev/ttyUSB2', # Adjust depending on actual udev rules
+    #                  'serial_baudrate': 115200,
+    #                  'frame_id': 'laser_frame',
+    #                  'inverted': False,
+    #                  'angle_compensate': True}],
+    #     output='screen'
+    # )
 
     # 4. Nav2 Bringup (Navigation Stack) - REMOVED from auto-start
     # This will now be launched dynamically via nav2_manager_node
@@ -99,6 +99,43 @@ def generate_launch_description():
         output='screen'
     )
 
+    # 5b. PointCloud to LaserScan (OAK-D 3D -> 2D Scan)
+    slam_lifecycle_node = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_slam',
+        output='screen',
+        parameters=[
+            {'use_sim_time': use_sim_time},
+            {'autostart': True},
+            {'node_names': ['slam_toolbox']}
+        ]
+    )
+
+    pc_to_laser_node = Node(
+        package='pointcloud_to_laserscan',
+        executable='pointcloud_to_laserscan_node',
+        name='pointcloud_to_laserscan',
+        remappings=[
+            ('cloud_in', '/oakd/points'),
+            ('scan', '/scan')
+        ],
+        parameters=[{
+            'target_frame': 'virtual_laser_link',
+            'transform_tolerance': 0.01,
+            'min_height': 0.1,
+            'max_height': 2.0,
+            'angle_min': -0.7,
+            'angle_max': 0.7,
+            'angle_increment': 0.0087,
+            'scan_time': 0.066,
+            'range_min': 0.2,
+            'range_max': 10.0,
+            'use_inf': True
+        }],
+        output='screen'
+    )
+    
     # 6. Web Dashboard Server
     web_server = ExecuteProcess(
         cmd=['python3', '-m', 'http.server', '8000'],
@@ -116,7 +153,7 @@ def generate_launch_description():
     )
 
     # 8. Robot Localization (EKF)
-    ekf_config_path = os.path.join(get_package_share_directory('rover_bringup'), 'config', 'ekf.yaml')
+    ekf_config_path = os.path.join(get_package_share_directory('hospobot_bringup'), 'config', 'ekf.yaml')
     ekf_node = Node(
         package='robot_localization',
         executable='ekf_node',
@@ -125,14 +162,14 @@ def generate_launch_description():
         parameters=[ekf_config_path]
     )
 
-    # 9. SLAM Toolbox (Online Async)
-    slam_config_path = os.path.join(get_package_share_directory('rover_bringup'), 'config', 'mapper_params_online_async.yaml')
+    # 9. SLAM Toolbox (Online Async) - Re-enabled for traditional geometric mapping
+    slam_config_path = os.path.join(get_package_share_directory('hospobot_bringup'), 'config', 'mapper_params_online_async.yaml')
     slam_node = Node(
         package='slam_toolbox',
         executable='async_slam_toolbox_node',
         name='slam_toolbox',
         output='screen',
-        parameters=[slam_config_path]
+        parameters=[slam_config_path, {'use_sim_time': False}]
     )
 
     # 10. OAK-D Pro W Camera (DepthAI or Custom Fallback)
@@ -165,7 +202,7 @@ def generate_launch_description():
             executable='oakd_yolo_node',
             name='oakd_yolo_node',
             output='screen',
-            parameters=[{'blob_path': ''}]
+            parameters=[{'blob_path': '/home/hospobot/hospobot_ws/mobilenet-ssd_6shave.blob'}]
         )
 
     # 11. Object Detector Node (Semantic Obstacle Detection)
@@ -173,6 +210,22 @@ def generate_launch_description():
         package='hospobot_perception',
         executable='object_detector',
         name='object_detector',
+        output='screen'
+    )
+    
+    # 12. Semantic Projection Node
+    semantic_projection_node = Node(
+        package='hospobot_perception',
+        executable='semantic_projection_node',
+        name='semantic_projection_node',
+        output='screen'
+    )
+    
+    # 13. Semantic Tracker Node
+    semantic_tracker_node = Node(
+        package='hospobot_perception',
+        executable='semantic_tracker_node',
+        name='semantic_tracker_node',
         output='screen'
     )
 
@@ -183,13 +236,17 @@ def generate_launch_description():
         cmd_vel_mux_node,
         diagnostics_node,
         rosbridge_server,
-        sllidar_node,
+        # sllidar_node,
         imu_node,
         ekf_node,
         slam_node,
+        slam_lifecycle_node,
         nav2_manager_node,
+        pc_to_laser_node,
         web_server,
         camera_node,
-        object_detector_node
+        object_detector_node,
+        semantic_projection_node,
+        semantic_tracker_node
     ])
 

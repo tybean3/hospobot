@@ -18,14 +18,13 @@ class Nav2ManagerNode(Node):
             if self.nav2_process is None or self.nav2_process.poll() is not None:
                 self.get_logger().info('UI requested Autonomous mode. Launching Nav2 stack...')
                 try:
-                    rover_bringup_dir = get_package_share_directory('rover_bringup')
-                    nav2_bringup_dir = get_package_share_directory('nav2_bringup')
-                    map_yaml = os.path.join(rover_bringup_dir, 'maps', 'hospital_map.yaml')
-                    params_yaml = os.path.join(nav2_bringup_dir, 'params', 'nav2_params.yaml')
+                    hospobot_bringup_dir = get_package_share_directory('hospobot_bringup')
+                    map_yaml = os.path.join(hospobot_bringup_dir, 'maps', 'hospital_map.yaml')
+                    params_yaml = os.path.join(hospobot_bringup_dir, 'config', 'nav2_params.yaml')
+                    slam_yaml = os.path.join(hospobot_bringup_dir, 'config', 'mapper_params_online_async.yaml')
                     
                     cmd = [
-                        'ros2', 'launch', 'nav2_bringup', 'bringup_launch.py',
-                        f'map:={map_yaml}',
+                        'ros2', 'launch', 'nav2_bringup', 'navigation_launch.py',
                         f'params_file:={params_yaml}',
                         'use_sim_time:=false'
                     ]

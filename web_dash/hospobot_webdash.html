@@ -132,8 +132,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow: auto;
         }
 
         #view-status.active {
@@ -166,57 +165,10 @@
         }
 
         .dashboard {
-            display: grid;
-            grid-template-areas: "lidar scan ." "imu ekf slam" "action nav cmd" "odom base cmd_out";
-            gap: 40px 30px;
-            max-width: 1000px;
+            display: block;
             width: 100%;
             position: relative;
             padding-bottom: 60px;
-        }
-
-        #node_lidar {
-            grid-area: lidar;
-        }
-
-        #topic_scan {
-            grid-area: scan;
-        }
-
-        #action_nav {
-            grid-area: action;
-        }
-
-        #node_nav {
-            grid-area: nav;
-        }
-
-        #topic_cmd {
-            grid-area: cmd;
-        }
-
-        #node_base {
-            grid-area: base;
-        }
-
-        #topic_odom {
-            grid-area: odom;
-        }
-
-        #node_imu {
-            grid-area: imu;
-        }
-
-        #node_ekf {
-            grid-area: ekf;
-        }
-
-        #node_slam {
-            grid-area: slam;
-        }
-
-        #topic_cmd_out {
-            grid-area: cmd_out;
         }
 
         .network-item {
@@ -229,16 +181,14 @@
             text-align: center;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
             transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
-            width: 180px;
-            min-height: 120px;
+            width: 130px;
+            min-height: 80px;
             box-sizing: border-box;
             position: relative;
             z-index: 10;
-            cursor: grab;
         }
 
         .network-item:active {
-            cursor: grabbing;
             box-shadow: 0 12px 24px rgba(0, 0, 0, 0.7);
         }
 
@@ -273,19 +223,22 @@
 
         .network-item h3 {
             margin: 4px 0;
-            font-size: 0.9rem;
+            font-size: 0.75rem;
             color: #f1f5f9;
+            word-wrap: break-word;
+            word-break: break-all;
+            width: 100%;
         }
 
         .network-item .type {
-            font-size: 0.6rem;
+            font-size: 0.5rem;
             color: rgba(255, 255, 255, 0.5);
             text-transform: uppercase;
             margin-bottom: 2px;
         }
 
         .network-item .metric {
-            font-size: 0.7rem;
+            font-size: 0.6rem;
             color: #cbd5e1;
         }
 
@@ -1220,7 +1173,7 @@
             <button id="btn-semantic" class="nav-btn" onclick="switchView('view-semantic', 'btn-semantic')">Semantic
                 Debug
             </button>
-            <button id="btn-settings" class="nav-btn" onclick="switchView('view-settings', 'btn-settings')">Robot
+            <button id="btn-settings" class="nav-btn" onclick="switchView('view-settings', 'btn-settings')">Hospobot
             </button>
         </div>
 
@@ -1244,10 +1197,9 @@
     <div id="view-network" class="view-container active">
         <div class="top-controls">
             <button class="btn-global" onclick="restartNetwork()">Reboot Network</button>
-            <button class="btn-primary" onclick="resetView()">Reset Layout</button>
         </div>
         <h1 class="network-header">ROS 2 <span>Network</span></h1>
-        <div class="dashboard" id="dashboard"></div>
+        <div class="dashboard" id="dashboard" style="position: relative; min-width: 1030px; min-height: 1610px; margin-top: 20px;"></div>
     </div>
 
     <div id="view-status" class="view-container">
@@ -1313,7 +1265,7 @@
 
         <div id="controller-sidebar" class="controller-sidebar">
             <button class="close-sidebar-btn" onclick="toggleSidebar()">&times;</button>
-            <h2>Robot <span>Controller</span></h2>
+            <h2>Hospobot <span>Controller</span></h2>
 
             <div class="mode-toggle">
                 <button id="btn-mode-manual" class="mode-toggle-btn active" onclick="switchControlMode('manual')">Manual
@@ -1452,14 +1404,14 @@
                 </div>
 
                 <p style="color: #64748b; font-size: 0.85rem; margin-top: 20px;">
-                    Warning: Recalibrating while the robot is on the ground may fail due to friction. Lift the wheels if
+                    Warning: Recalibrating while hospobot is on the ground may fail due to friction. Lift the wheels if
                     full index search is required.
                 </p>
             </div>
 
             <!-- Right Column: Robot Configuration -->
             <div class="settings-card">
-                <h3>Robot Configuration</h3>
+                <h3>Hospobot Configuration</h3>
 
                 <div class="setting-row">
                     <div class="setting-label">
@@ -1651,6 +1603,8 @@
             } catch (e) { }
         });
 
+        let diagTimeout = null;
+
         const diagSub = new ROSLIB.Topic({ ros: ros, name: '/web_diagnostics', messageType: 'std_msgs/String' });
         diagSub.subscribe(function (msg) {
             try {
@@ -1658,13 +1612,32 @@
                 document.getElementById('ui-ping').innerText = data.ping + 'ms';
                 document.getElementById('ui-bat').innerText = data.battery + '%';
 
-                for (const [id, status] of Object.entries(data.nodes)) {
-                    updateNetworkItem(id, status);
-                }
-                for (const [id, status] of Object.entries(data.topics)) {
-                    updateNetworkItem(id, status);
-                }
+                // Process nodes dynamically
+                const activeNodes = (data.raw_nodes || []).map(n => n.replace(/^\//, ''));
+                networkEntities.filter(e => e.type === 'Node').forEach(entity => {
+                    const cleanEntityName = entity.name.replace(/^\//, '');
+                    const isOnline = activeNodes.includes(cleanEntityName);
+                    updateNetworkItem(entity.id, isOnline ? 'FUNCTIONAL' : 'OFFLINE');
+                });
+
+                // Process topics dynamically
+                const activeTopics = (data.raw_topics || []).map(t => t.replace(/^\//, ''));
+                networkEntities.filter(e => e.type === 'Topic' || e.type === 'Action').forEach(entity => {
+                    const names = entity.name.split(' & ').map(n => n.trim().replace(/^\//, ''));
+                    const isOnline = names.some(n => activeTopics.includes(n));
+                    updateNetworkItem(entity.id, isOnline ? 'FUNCTIONAL' : 'OFFLINE');
+                });
             } catch (e) { }
+
+            // Heartbeat: Reset all to offline if no message received for 3 seconds
+            clearTimeout(diagTimeout);
+            diagTimeout = setTimeout(() => {
+                document.getElementById('ui-ping').innerText = '-- ms';
+                document.getElementById('ui-bat').innerText = '-- %';
+                networkEntities.forEach(entity => {
+                    updateNetworkItem(entity.id, 'OFFLINE');
+                });
+            }, 3000);
         });
 
         function updateNetworkItem(id, status) {
@@ -1700,62 +1673,47 @@
 
         // --- NETWORK GRAPH SETUP ---
         const networkEntities = [
-            { id: 'node_camera', name: '/oakd_yolo_node', type: 'Node', shape: 'shape-node' },
-            { id: 'node_proj', name: '/semantic_projection_node', type: 'Node', shape: 'shape-node' },
-            { id: 'node_tracker', name: '/semantic_tracker_node', type: 'Node', shape: 'shape-node' },
-            { id: 'node_cost_bridge', name: '/semantic_costmap_bridge', type: 'Node', shape: 'shape-node' },
-            { id: 'topic_pts_rgb', name: '/oakd/points & image', type: 'Topic', shape: 'shape-rect' },
-            { id: 'topic_dets', name: '/oakd/detections', type: 'Topic', shape: 'shape-rect' },
-            { id: 'topic_raw_obj', name: '/semantic/raw_objects', type: 'Topic', shape: 'shape-rect' },
-            { id: 'topic_track_obj', name: '/semantic/tracked_objects', type: 'Topic', shape: 'shape-rect' },
-            { id: 'topic_sem_map', name: '/semantic/obstacle_cloud', type: 'Topic', shape: 'shape-rect' },
-            { id: 'node_lidar', name: '/sllidar_node', type: 'Node', shape: 'shape-node' },
-            { id: 'node_imu', name: '/bno086_node', type: 'Node', shape: 'shape-node' },
-            { id: 'node_ekf', name: '/ekf_filter_node', type: 'Node', shape: 'shape-node' },
-            { id: 'node_slam', name: '/slam_toolbox', type: 'Node', shape: 'shape-node' },
-            { id: 'node_nav', name: '/nav2_manager_node', type: 'Node', shape: 'shape-node' },
-            { id: 'node_base', name: '/odesc_drive_node', type: 'Node', shape: 'shape-node' },
-            { id: 'node_mux', name: '/cmd_vel_mux', type: 'Node', shape: 'shape-node' },
-            { id: 'node_diag', name: '/diagnostics_node', type: 'Node', shape: 'shape-node' },
-            { id: 'node_rsp', name: '/robot_state_publisher', type: 'Node', shape: 'shape-node' },
-            { id: 'node_bridge', name: '/rosbridge_websocket', type: 'Node', shape: 'shape-node' },
-            { id: 'topic_scan', name: '/scan', type: 'Topic', shape: 'shape-rect' },
-            { id: 'topic_imu', name: '/imu/data', type: 'Topic', shape: 'shape-rect' },
-            { id: 'topic_odom', name: '/odom', type: 'Topic', shape: 'shape-rect' },
-            { id: 'topic_tf', name: '/tf', type: 'Topic', shape: 'shape-rect' },
-            { id: 'topic_map', name: '/map', type: 'Topic', shape: 'shape-rect' },
-            { id: 'topic_cmd', name: '/cmd_vel', type: 'Topic', shape: 'shape-rect' },
-            { id: 'topic_cmd_out', name: '/cmd_vel_out', type: 'Topic', shape: 'shape-rect' },
-            { id: 'action_nav', name: '/navigate_to_pose', type: 'Action', shape: 'shape-rect' }
+            { id: 'node_diag', name: '/diagnostics_node', type: 'Node', shape: 'shape-node', x: 50, y: 50 },
+            { id: 'node_camera', name: '/oakd_yolo_node', type: 'Node', shape: 'shape-node', x: 450, y: 50 },
+            { id: 'node_bridge', name: '/rosbridge_websocket', type: 'Node', shape: 'shape-node', x: 850, y: 50 },
+            
+            { id: 'topic_pts_rgb', name: '/oakd/points & image', type: 'Topic', shape: 'shape-rect', x: 300, y: 160 },
+            { id: 'topic_dets', name: '/oakd/detections', type: 'Topic', shape: 'shape-rect', x: 600, y: 160 },
+            
+            { id: 'node_proj', name: '/semantic_projection_node', type: 'Node', shape: 'shape-node', x: 450, y: 270 },
+            { id: 'topic_raw_obj', name: '/semantic/raw_objects', type: 'Topic', shape: 'shape-rect', x: 450, y: 380 },
+            { id: 'node_tracker', name: '/semantic_tracker_node', type: 'Node', shape: 'shape-node', x: 450, y: 490 },
+            { id: 'topic_track_obj', name: '/semantic/tracked_objects', type: 'Topic', shape: 'shape-rect', x: 450, y: 600 },
+            { id: 'node_cost_bridge', name: '/semantic_costmap_bridge', type: 'Node', shape: 'shape-node', x: 450, y: 710 },
+            
+            { id: 'topic_sem_map', name: '/semantic/obstacle_cloud', type: 'Topic', shape: 'shape-rect', x: 300, y: 820 },
+            { id: 'action_nav', name: '/navigate_to_pose', type: 'Action', shape: 'shape-rect', x: 600, y: 820 },
+            
+            { id: 'node_nav', name: '/nav2_manager_node', type: 'Node', shape: 'shape-node', x: 450, y: 930 },
+            { id: 'topic_cmd', name: '/cmd_vel', type: 'Topic', shape: 'shape-rect', x: 450, y: 1040 },
+            { id: 'node_mux', name: '/cmd_vel_mux', type: 'Node', shape: 'shape-node', x: 450, y: 1150 },
+            { id: 'topic_cmd_out', name: '/cmd_vel_out', type: 'Topic', shape: 'shape-rect', x: 450, y: 1260 },
+            { id: 'node_base', name: '/odesc_drive_node', type: 'Node', shape: 'shape-node', x: 450, y: 1370 },
+            { id: 'topic_odom', name: '/odom', type: 'Topic', shape: 'shape-rect', x: 450, y: 1480 }
         ];
 
         const networkLinks = [
             { source: 'node_camera', target: 'topic_pts_rgb', path: 'fluid' },
             { source: 'node_camera', target: 'topic_dets', path: 'fluid' },
-            { source: 'topic_pts_rgb', target: 'node_proj', path: 'fluid' },
-            { source: 'topic_dets', target: 'node_proj', path: 'fluid' },
+            { source: 'topic_pts_rgb', target: 'node_proj', path: 'fluid', endSocket: 'left' },
+            { source: 'topic_dets', target: 'node_proj', path: 'fluid', endSocket: 'right' },
             { source: 'node_proj', target: 'topic_raw_obj', path: 'fluid' },
             { source: 'topic_raw_obj', target: 'node_tracker', path: 'fluid' },
             { source: 'node_tracker', target: 'topic_track_obj', path: 'fluid' },
             { source: 'topic_track_obj', target: 'node_cost_bridge', path: 'fluid' },
             { source: 'node_cost_bridge', target: 'topic_sem_map', path: 'fluid' },
-            { source: 'node_lidar', target: 'topic_scan', path: 'fluid' },
-            { source: 'topic_scan', target: 'node_slam', path: 'fluid' },
-            { source: 'node_slam', target: 'topic_map', path: 'fluid' },
-            { source: 'topic_map', target: 'node_nav', path: 'fluid' },
-            { source: 'node_slam', target: 'topic_tf', path: 'fluid' },
-            { source: 'node_imu', target: 'topic_imu', path: 'fluid' },
-            { source: 'topic_imu', target: 'node_ekf', path: 'fluid' },
-            { source: 'node_base', target: 'topic_odom', path: 'fluid' },
-            { source: 'topic_odom', target: 'node_ekf', path: 'fluid' },
-            { source: 'node_ekf', target: 'topic_tf', path: 'fluid' },
-            { source: 'topic_tf', target: 'node_nav', path: 'fluid' },
-            { source: 'topic_tf', target: 'node_rsp', path: 'fluid' },
-            { source: 'action_nav', target: 'node_nav', path: 'fluid', dashed: true },
+            { source: 'topic_sem_map', target: 'node_nav', path: 'fluid', endSocket: 'left' },
+            { source: 'action_nav', target: 'node_nav', path: 'fluid', dashed: true, endSocket: 'right' },
             { source: 'node_nav', target: 'topic_cmd', path: 'fluid' },
             { source: 'topic_cmd', target: 'node_mux', path: 'fluid' },
             { source: 'node_mux', target: 'topic_cmd_out', path: 'fluid' },
-            { source: 'topic_cmd_out', target: 'node_base', path: 'fluid' }
+            { source: 'topic_cmd_out', target: 'node_base', path: 'fluid' },
+            { source: 'node_base', target: 'topic_odom', path: 'fluid' }
         ];
 
         const dashboard = document.getElementById('dashboard');
@@ -1764,17 +1722,21 @@
 
         networkEntities.forEach(entity => {
             const el = document.createElement('div'); el.id = entity.id; el.className = `network-item ${entity.shape} status-offline`;
+            el.style.position = 'absolute';
+            el.style.left = entity.x + 'px';
+            el.style.top = entity.y + 'px';
             let hoverAction = entity.type === 'Node' ? `openNodeModal('${entity.id}', '${entity.name}')` : `openTopicModal('${entity.id}', '${entity.name}')`;
             let echoBtnHTML = (entity.type === 'Topic' || entity.type === 'Action') ? `<button class="action-btn btn-echo" onclick="openEchoModal('${entity.id}', '${entity.name}')">Echo</button>` : '';
             let toolBtnName = entity.type === 'Node' ? 'Tool' : 'Publish';
             el.innerHTML = `<div class="action-bar"><button class="action-btn" onclick="restartEntity('${entity.id}')">Restart</button><button class="action-btn" onclick="stopEntity('${entity.id}')">Kill</button>${echoBtnHTML}<button class="action-btn" onclick="${hoverAction}">${toolBtnName}</button></div><div class="type">${entity.type}</div><h3>${entity.name}</h3><div class="metric status-text">Status: <span class="val" style="color:white; font-weight:bold;">OFFLINE</span></div>`;
-            dashboard.appendChild(el); makeDraggable(el);
+            dashboard.appendChild(el);
+            // makeDraggable(el); // Disabled for static intuitive layout
         });
 
         setTimeout(() => {
             networkLinks.forEach(link => {
                 const startEl = document.getElementById(link.source), endEl = document.getElementById(link.target);
-                if (startEl && endEl) lines.push(new LeaderLine(startEl, endEl, { color: '#475569', size: 3, path: link.path, startSocket: 'auto', endSocket: 'auto', startPlug: 'behind', endPlug: 'arrow3', dash: link.dashed ? { animation: true } : false }));
+                if (startEl && endEl) lines.push(new LeaderLine(startEl, endEl, { color: '#475569', size: 3, path: link.path, startSocket: link.startSocket || 'bottom', endSocket: link.endSocket || 'top', startPlug: 'behind', endPlug: 'arrow3', dash: link.dashed ? { animation: true } : false }));
             });
         }, 500);
 
@@ -1885,7 +1847,7 @@
             };
         }
 
-        function resetView() { document.querySelectorAll('.network-item').forEach(e => { e.style.top = '0px'; e.style.left = '0px'; }); setTimeout(() => lines.forEach(l => l.position()), 500); }
+        // resetView removed since layout is static and non-draggable
 
         // --- CONTROLLER SIDEBAR LOGIC ---
         function toggleSidebar() {

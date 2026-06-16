@@ -96,7 +96,7 @@ class OakdYoloNode(Node):
         
         # Properties
         if self.use_yolo:
-            self.cam_rgb.setPreviewSize(640, 640)
+            self.cam_rgb.setPreviewSize(300, 300)
         else:
             self.cam_rgb.setPreviewSize(640, 400)
             
@@ -122,38 +122,25 @@ class OakdYoloNode(Node):
         # Post-Processing configs to run directly on camera chip (MyriadX)
         config = self.stereo.initialConfig.get()
         config.postProcessing.decimationFilter.decimationFactor = 1 # Keep 1:1 scale
-        config.postProcessing.spatialFilter.enable = True # Enable to smooth depth edges
-        config.postProcessing.temporalFilter.enable = True # Enable to stabilize flickering points over time
-        config.postProcessing.speckleFilter.enable = True # Enable to remove salt and pepper noise
-        config.postProcessing.speckleFilter.speckleRange = 50
+        config.postProcessing.spatialFilter.enable = False # Disable to save memory for NN
+        config.postProcessing.temporalFilter.enable = False # Disable to save memory for NN
+        config.postProcessing.speckleFilter.enable = False # Disable to save memory for NN
         config.postProcessing.thresholdFilter.minRange = 200 # 20 cm
-        config.postProcessing.thresholdFilter.maxRange = 6000 # 6 meters
-        self.stereo.initialConfig.set(config)
+        # Keep depth at standard 640x400 to prevent Stereo block matching crashes
+        self.stereo.setOutputSize(640, 400)
         
         if self.use_yolo:
-            self.stereo.setOutputSize(640, 640)
-        else:
-            self.stereo.setOutputSize(640, 400)
-        
-        if self.use_yolo:
-            self.spatial_det_nn = self.pipeline.create(dai.node.YoloSpatialDetectionNetwork)
+            self.spatial_det_nn = self.pipeline.create(dai.node.MobileNetSpatialDetectionNetwork)
             self.xout_nn = self.pipeline.create(dai.node.XLinkOut)
             self.xout_nn.setStreamName("detections")
             
-            # YOLO Spatial Detection Network
+            # MobileNet Spatial Detection Network
             self.spatial_det_nn.setBlobPath(blob_path)
             self.spatial_det_nn.setConfidenceThreshold(0.5)
             self.spatial_det_nn.input.setBlocking(False)
             self.spatial_det_nn.setBoundingBoxScaleFactor(0.5)
             self.spatial_det_nn.setDepthLowerThreshold(100)
             self.spatial_det_nn.setDepthUpperThreshold(5000)
-            
-            # YOLO specific settings
-            self.spatial_det_nn.setNumClasses(80)
-            self.spatial_det_nn.setCoordinateSize(4)
-            self.spatial_det_nn.setAnchors([10,14, 23,27, 37,58, 81,82, 135,169, 344,319])
-            self.spatial_det_nn.setAnchorMasks({"side26": [1,2,3], "side13": [3,4,5]})
-            self.spatial_det_nn.setIouThreshold(0.5)
             
             # Linking
             self.mono_left.out.link(self.stereo.left)
@@ -162,7 +149,7 @@ class OakdYoloNode(Node):
             self.cam_rgb.preview.link(self.spatial_det_nn.input)
             self.spatial_det_nn.out.link(self.xout_nn.input)
             
-            self.stereo.depth.link(self.spatial_det_nn.depth)
+            self.stereo.depth.link(self.spatial_det_nn.inputDepth)
             self.spatial_det_nn.passthroughDepth.link(self.xout_depth.input)
             self.spatial_det_nn.passthrough.link(self.xout_rgb.input)
         else:
@@ -185,10 +172,10 @@ class OakdYoloNode(Node):
                 self.calib_data = None
                 self.get_logger().warning(f"Could not read calibration from device: {calib_err}. Using generic defaults.")
                 
-            self.q_rgb = self.device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
-            self.q_depth = self.device.getOutputQueue(name="depth", maxSize=4, blocking=False)
+            self.q_rgb = self.device.getOutputQueue("rgb", 4, False)
+            self.q_depth = self.device.getOutputQueue("depth", 4, False)
             if self.use_yolo:
-                self.q_det = self.device.getOutputQueue(name="detections", maxSize=4, blocking=False)
+                self.q_det = self.device.getOutputQueue("detections", 4, False)
             
             # Start timer for processing
             timer_period = 1.0 / self.update_rate
@@ -244,6 +231,52 @@ class OakdYoloNode(Node):
         fx, fy, cx, cy = self.calib_intrinsics
         now = self.get_clock().now().to_msg()
             
+        # Process Detections and draw on RGB frame
+        det_array_msg = None
+        if self.use_yolo:
+            in_det = self.q_det.tryGet()
+            if in_det is not None:
+                det_array_msg = Detection2DArray()
+                det_array_msg.header.stamp = now
+                det_array_msg.header.frame_id = "oakd_frame"
+                
+                detections = in_det.detections
+                for detection in detections:
+                    det_msg = Detection2D()
+                    
+                    x1, y1 = detection.xmin, detection.ymin
+                    x2, y2 = detection.xmax, detection.ymax
+                    
+                    det_msg.bbox.center.position.x = (x1 + x2) / 2.0
+                    det_msg.bbox.center.position.y = (y1 + y2) / 2.0
+                    det_msg.bbox.size_x = x2 - x1
+                    det_msg.bbox.size_y = y2 - y1
+                    
+                    hyp = ObjectHypothesisWithPose()
+                    class_label = "HUMAN" if str(detection.label) == "15" else f"CLASS_{detection.label}"
+                    hyp.hypothesis.class_id = class_label
+                    hyp.hypothesis.score = detection.confidence
+                    
+                    # Pack the robust 3D coordinates from DepthAI
+                    hyp.pose.pose.position.x = float(detection.spatialCoordinates.x) / 1000.0
+                    hyp.pose.pose.position.y = float(detection.spatialCoordinates.y) / 1000.0
+                    hyp.pose.pose.position.z = float(detection.spatialCoordinates.z) / 1000.0
+                    
+                    det_msg.results.append(hyp)
+                    det_array_msg.detections.append(det_msg)
+                    
+                    # Draw bounding box on RGB frame
+                    if self.last_rgb_frame is not None:
+                        h, w = self.last_rgb_frame.shape[:2]
+                        px1 = int(x1 * w)
+                        py1 = int(y1 * h)
+                        px2 = int(x2 * w)
+                        py2 = int(y2 * h)
+                        import cv2
+                        cv2.rectangle(self.last_rgb_frame, (px1, py1), (px2, py2), (0, 255, 0), 2)
+                        cv2.putText(self.last_rgb_frame, f"{class_label} {detection.confidence:.2f}", 
+                                    (px1, py1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                        
         # Publish RGB
         if rgb_subbed and self.last_rgb_frame is not None:
             rgb_msg = self.bridge.cv2_to_imgmsg(self.last_rgb_frame, encoding="bgr8")
@@ -260,7 +293,7 @@ class OakdYoloNode(Node):
             
         # Publish Camera Info
         if depth_subbed or rgb_subbed or points_subbed:
-            h, w = (640, 640) if self.use_yolo else (400, 640)
+            h, w = (300, 300) if self.use_yolo else (400, 640)
             if self.last_depth_frame is not None:
                 h, w = self.last_depth_frame.shape[:2]
             
@@ -308,8 +341,15 @@ class OakdYoloNode(Node):
                 x_val = (u_val - cx_dec) * z_val / fx_dec
                 y_val = (v_val - cy_dec) * z_val / fy_dec
                 
-                # Extract and pack BGR color channels from the downsampled RGB frame
-                bgr_val = self.last_rgb_frame[::decimation, ::decimation][valid_mask]
+                # Extract and pack BGR color channels
+                # Resize RGB to match the decimated depth map if they don't match
+                if self.last_rgb_frame.shape[:2] != depth_m.shape[:2]:
+                    import cv2
+                    rgb_resized = cv2.resize(self.last_rgb_frame, (depth_m.shape[1], depth_m.shape[0]))
+                    bgr_val = rgb_resized[valid_mask]
+                else:
+                    bgr_val = self.last_rgb_frame[::decimation, ::decimation][valid_mask]
+                    
                 b = bgr_val[:, 0].astype(np.uint32)
                 g = bgr_val[:, 1].astype(np.uint32)
                 r = bgr_val[:, 2].astype(np.uint32)
@@ -341,36 +381,8 @@ class OakdYoloNode(Node):
             except Exception as pc_err:
                 self.get_logger().error(f"Failed to generate point cloud: {pc_err}")
             
-        if self.use_yolo:
-            in_det = self.q_det.tryGet()
-            if in_det is not None:
-                # Publish Detections
-                det_array_msg = Detection2DArray()
-                det_array_msg.header.stamp = now
-                det_array_msg.header.frame_id = "oakd_frame"
-                
-                detections = in_det.detections
-                for detection in detections:
-                    det_msg = Detection2D()
-                    
-                    # Bounding box
-                    x1, y1 = detection.xmin, detection.ymin
-                    x2, y2 = detection.xmax, detection.ymax
-                    
-                    det_msg.bbox.center.position.x = (x1 + x2) / 2.0
-                    det_msg.bbox.center.position.y = (y1 + y2) / 2.0
-                    det_msg.bbox.size_x = x2 - x1
-                    det_msg.bbox.size_y = y2 - y1
-                    
-                    # Hypothesis
-                    hyp = ObjectHypothesisWithPose()
-                    hyp.hypothesis.class_id = str(detection.label)
-                    hyp.hypothesis.score = detection.confidence
-                    det_msg.results.append(hyp)
-                    
-                    det_array_msg.detections.append(det_msg)
-                    
-                self.det_pub.publish(det_array_msg)
+        if self.use_yolo and det_array_msg is not None:
+            self.det_pub.publish(det_array_msg)
 
 def main(args=None):
     rclpy.init(args=args)

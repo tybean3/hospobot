@@ -49,7 +49,7 @@ def calibrate_and_start(ser, name):
     time.sleep(0.5)
 
 def main():
-    parser = argparse.ArgumentParser(description="WASD Teleop for Dual ODESC Rover")
+    parser = argparse.ArgumentParser(description="WASD Teleop for Dual ODESC Hospobot")
     parser.add_argument('--left-port', default='/dev/ttyAMA0', help="Left motor port")
     parser.add_argument('--right-port', default='/dev/ttyAMA3', help="Right motor port")
     parser.add_argument('-b', '--baudrate', type=int, default=115200)
@@ -61,8 +61,8 @@ def main():
     args = parser.parse_args()
 
     # In a typical differential drive, one motor might need to be inverted
-    # so that positive velocity moves the robot forward on both sides.
-    # You can change defaults here or pass flags if your robot spins in circles on 'w'
+    # so that positive velocity moves the hospobot forward on both sides.
+    # You can change defaults here or pass flags if your hospobot spins in circles on 'w'
     left_mult = -1.0 if args.invert_left else 1.0
     right_mult = -1.0 if args.invert_right else 1.0
 
@@ -79,7 +79,7 @@ def main():
     calibrate_and_start(ser_right, "RIGHT Motor")
 
     print("\n==================================")
-    print("      ROVER TELEOP READY")
+    print("      HOSPOBOT TELEOP READY")
     print("==================================")
     print(" W : Forward")
     print(" S : Reverse")

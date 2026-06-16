@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>rover_description</name>
+  <name>hospobot_description</name>
   <version>0.0.1</version>
-  <description>URDF description for the hospital rover</description>
+  <description>URDF description for the hospobot</description>
   <maintainer email="user@todo.todo">user</maintainer>
   <license>TODO: License declaration</license>
 

@@ -20,7 +20,7 @@ setup(
     zip_safe=True,
     maintainer='hospobot',
     maintainer_email='hospobot@todo.todo',
-    description='Perception package for the Hospital Delivery Robot',
+    description='Perception package for the Hospobot',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={

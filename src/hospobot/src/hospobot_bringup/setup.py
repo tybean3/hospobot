@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 import os
 from glob import glob
 
-package_name = 'rover_bringup'
+package_name = 'hospobot_bringup'
 
 setup(
     name=package_name,
@@ -20,7 +20,7 @@ setup(
     zip_safe=True,
     maintainer='user',
     maintainer_email='user@todo.todo',
-    description='Launch package for the hospital rover',
+    description='Launch package for the hospobot',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={

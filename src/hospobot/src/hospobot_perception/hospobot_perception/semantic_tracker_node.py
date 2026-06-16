@@ -2,6 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from hospobot_interfaces.msg import SemanticObject, SemanticObjectArray
+from visualization_msgs.msg import Marker, MarkerArray
 import numpy as np
 import time
 
@@ -43,6 +44,7 @@ class SemanticTrackerNode(Node):
         
         self.sub = self.create_subscription(SemanticObjectArray, '/semantic/raw_objects', self.callback, 10)
         self.pub = self.create_publisher(SemanticObjectArray, '/semantic/tracked_objects', 10)
+        self.marker_pub = self.create_publisher(MarkerArray, '/semantic/tracked_objects_markers', 10)
         
         self.tracked_objects = []
         self.next_id = 1
@@ -98,7 +100,9 @@ class SemanticTrackerNode(Node):
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = 'odom'
         
-        for t_obj in self.tracked_objects:
+        marker_array = MarkerArray()
+        
+        for idx, t_obj in enumerate(self.tracked_objects):
             s_obj = SemanticObject()
             s_obj.class_name = t_obj.class_name
             s_obj.tracking_id = t_obj.id
@@ -111,7 +115,56 @@ class SemanticTrackerNode(Node):
             s_obj.confidence = 1.0 # Assume confident if tracked
             msg.objects.append(s_obj)
             
+            # Cube Marker
+            cube = Marker()
+            cube.header = msg.header
+            cube.ns = "semantic_cubes"
+            cube.id = t_obj.id
+            cube.type = Marker.CUBE
+            cube.action = Marker.ADD
+            cube.pose.position.x = t_obj.x
+            cube.pose.position.y = t_obj.y
+            cube.pose.position.z = t_obj.z
+            # Approximate size for humans vs objects
+            if "HUMAN" in t_obj.class_name.upper() or "DOCTOR" in t_obj.class_name.upper() or "NURSE" in t_obj.class_name.upper():
+                cube.scale.x = 0.5
+                cube.scale.y = 0.5
+                cube.scale.z = 1.7
+                cube.pose.position.z = 1.7 / 2.0  # Put on ground
+            else:
+                cube.scale.x = 0.4
+                cube.scale.y = 0.4
+                cube.scale.z = 0.4
+            
+            cube.color.r = 0.0
+            cube.color.g = 1.0
+            cube.color.b = 0.0
+            cube.color.a = 0.5
+            cube.lifetime.sec = 1
+            
+            # Text Marker
+            text = Marker()
+            text.header = msg.header
+            text.ns = "semantic_text"
+            text.id = t_obj.id
+            text.type = Marker.TEXT_VIEW_FACING
+            text.action = Marker.ADD
+            text.pose.position.x = t_obj.x
+            text.pose.position.y = t_obj.y
+            text.pose.position.z = t_obj.z + (cube.scale.z / 2.0) + 0.2
+            text.scale.z = 0.3
+            text.color.r = 1.0
+            text.color.g = 1.0
+            text.color.b = 1.0
+            text.color.a = 1.0
+            text.text = f"{t_obj.class_name} ID:{t_obj.id}"
+            text.lifetime.sec = 1
+            
+            marker_array.markers.extend([cube, text])
+            
         self.pub.publish(msg)
+        if marker_array.markers:
+            self.marker_pub.publish(marker_array)
 
 def main(args=None):
     rclpy.init(args=args)

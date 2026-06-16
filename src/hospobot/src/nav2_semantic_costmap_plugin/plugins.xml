@@ -1,0 +1,5 @@
+<library path="nav2_semantic_costmap_plugin">
+  <class type="nav2_semantic_costmap_plugin::SemanticLayer" base_class_type="nav2_costmap_2d::Layer">
+    <description>Dynamic semantic layer for injecting object-specific costs into Nav2 Costmap2D.</description>
+  </class>
+</library>
