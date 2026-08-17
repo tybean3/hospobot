@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospobot Mapping Dashboard</title>
+    <!-- ROS Web libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/eventemitter2@6.4.9/lib/eventemitter2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
+    
+    <!-- Google Fonts for sleek typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <h1>Hospobot Mapping</h1>
+            <div id="connection-status" class="status-badge disconnected">Disconnected</div>
+        </header>
+
+        <main>
+            <div class="status-panel">
+                <h2>System Status</h2>
+                <p id="mapping-status" class="status-text active">Mapping Active</p>
+                <div id="notification-area" class="notification hidden"></div>
+            </div>
+
+            <div class="controls-grid">
+                <button id="btn-save" class="control-btn primary">
+                    <span class="icon">💾</span>
+                    <span class="label">Save Map (Backup)</span>
+                </button>
+                
+                <button id="btn-revert" class="control-btn warning">
+                    <span class="icon">⏪</span>
+                    <span class="label">Revert to Save</span>
+                </button>
+
+                <button id="btn-pause" class="control-btn secondary">
+                    <span class="icon">⏸️</span>
+                    <span class="label">Pause Mapping</span>
+                </button>
+
+                <button id="btn-resume" class="control-btn success">
+                    <span class="icon">▶️</span>
+                    <span class="label">Resume Mapping</span>
+                </button>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Hospobot Internal Navigation System</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

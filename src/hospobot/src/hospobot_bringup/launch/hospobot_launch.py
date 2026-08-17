@@ -4,7 +4,8 @@ from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, ExecuteProcess
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, Command
+from launch.substitutions import LaunchConfiguration, Command, PythonExpression
+from launch.conditions import IfCondition
 from launch_ros.actions import Node
 
 def generate_launch_description():
@@ -16,6 +17,7 @@ def generate_launch_description():
 
     # Arguments
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
+    nav_mode = LaunchConfiguration('nav_mode', default='mapping')
     map_yaml_file = os.path.join(hospobot_bringup_dir, 'maps', 'hospital_map.yaml')
 
     # Xacro parsing
@@ -33,21 +35,42 @@ def generate_launch_description():
         }]
     )
 
-    # 2. ODESC Hardware Node (Differential Drive and Odometry)
-    odesc_hardware_node = Node(
-        package='odesc_hardware',
-        executable='odesc_drive_node',
-        name='odesc_hardware',
+    # 2. CAN interface bring-up (runs before SocketCAN bridge)
+    # Requires passwordless sudo for ip link — add:
+    #   hospobot ALL=(ALL) NOPASSWD: /sbin/ip link set can0 up type can bitrate *
+    # to /etc/sudoers.d/hospobot-can
+    can0_setup = ExecuteProcess(
+        cmd=['bash', '-c',
+             'sudo ip link set can0 down 2>/dev/null; '
+             'if ! ip link show can0 >/dev/null 2>&1; then '
+             '  sudo modprobe vcan 2>/dev/null; '
+             '  sudo ip link add dev can0 type vcan 2>/dev/null; '
+             'fi; '
+             '(sudo ip link set can0 up type can bitrate 500000 2>/dev/null || sudo ip link set can0 up 2>/dev/null) && '
+             'sudo ip link set can0 txqueuelen 1000 2>/dev/null && '
+             'echo "[can0] Interface UP (physical/virtual) at 500kbit/s, txqueuelen=1000" || '
+             'echo "[can0] WARNING: Failed to bring up can0"'],
+        output='screen',
+    )
+
+
+    # 2.1 ODrive CAN Node (Differential Drive and Odometry over CAN)
+    odrive_can_node = Node(
+        package='hospobot_can_bridge',
+        executable='odrive_can_node',
+        name='odrive_can_node',
         output='screen',
         parameters=[{
-            'left_serial_port': '/dev/ttyAMA0',
-            'right_serial_port': '/dev/ttyAMA3',
-            'baudrate': 115200,
-            'track_width': 0.4,
-            'wheel_radius': 0.08,
+            'left_node_id': 1,
+            'right_node_id': 2,
+            'track_width': 0.0826,
+            'wheel_radius': 0.0625,
             'odom_freq': 20.0,
-            'invert_left': False,
-            'invert_right': True
+            'invert_drive_left': True,
+            'invert_drive_right': False,
+            'invert_odom_left': True,
+            'invert_odom_right': False,
+            'heartbeat_timeout': 2.0
         }]
     )
 
@@ -74,19 +97,51 @@ def generate_launch_description():
         )
     )
 
-    # 3. Lidar Node (sllidar_ros2) - REMOVED
-    # sllidar_node = Node(
-    #     package='sllidar_ros2',
-    #     executable='sllidar_node',
-    #     name='sllidar_node',
-    #     parameters=[{'channel_type': 'serial',
-    #                  'serial_port': '/dev/ttyUSB2', # Adjust depending on actual udev rules
-    #                  'serial_baudrate': 115200,
-    #                  'frame_id': 'laser_frame',
-    #                  'inverted': False,
-    #                  'angle_compensate': True}],
-    #     output='screen'
-    # )
+    # 3. Lidar Node (sllidar_ros2)
+    sllidar_node = Node(
+        package='sllidar_ros2',
+        executable='sllidar_node',
+        name='sllidar_node',
+        parameters=[{'channel_type': 'serial',
+                     'serial_port': '/dev/ttyUSB0', # Adjust depending on actual udev rules
+                     'serial_baudrate': 115200,
+                     'frame_id': 'laser_frame',
+                     'inverted': False,
+                     'angle_compensate': True}],
+        remappings=[('/scan', '/scan_raw')],
+        output='screen'
+    )
+
+    # 3.1 Laser Filter Node
+    laser_filter_node = Node(
+        package='hospobot_perception',
+        executable='laser_filter_node',
+        name='laser_filter_node',
+        output='screen'
+    )
+
+    # 3b. Laser ICP Odometry
+    icp_odometry_node = Node(
+        package='rtabmap_odom',
+        executable='icp_odometry',
+        name='icp_odometry',
+        output='screen',
+        parameters=[{
+            'frame_id': 'base_footprint',
+            'odom_frame_id': 'odom_laser',
+            'publish_tf': False, # Disabled to let EKF publish base_footprint tf
+            'wait_for_transform': 0.2,
+            'expected_update_rate': 10.0,
+            'Odom/GuessMotion': 'true',
+            'Icp/MaxCorrespondenceDistance': '0.3',
+            'Icp/MaxTranslation': '1.0',
+            'Odom/ResetCountdown': '1',
+        }],
+        remappings=[
+            ('scan', '/scan'),
+            ('odom', '/odom_laser')
+        ]
+    )
 
     # 4. Nav2 Bringup (Navigation Stack) - REMOVED from auto-start
     # This will now be launched dynamically via nav2_manager_node
@@ -99,18 +154,7 @@ def generate_launch_description():
         output='screen'
     )
 
-    # 5b. PointCloud to LaserScan (OAK-D 3D -> 2D Scan)
-    slam_lifecycle_node = Node(
-        package='nav2_lifecycle_manager',
-        executable='lifecycle_manager',
-        name='lifecycle_manager_slam',
-        output='screen',
-        parameters=[
-            {'use_sim_time': use_sim_time},
-            {'autostart': True},
-            {'node_names': ['slam_toolbox']}
-        ]
-    )
+    # 5b. RTAB-Map RGB-D Odometry - REMOVED (Using On-Device VIO instead)
 
     pc_to_laser_node = Node(
         package='pointcloud_to_laserscan',
@@ -122,15 +166,15 @@ def generate_launch_description():
         ],
         parameters=[{
             'target_frame': 'virtual_laser_link',
-            'transform_tolerance': 0.01,
-            'min_height': 0.1,
-            'max_height': 2.0,
-            'angle_min': -0.7,
-            'angle_max': 0.7,
-            'angle_increment': 0.0087,
-            'scan_time': 0.066,
+            'transform_tolerance': 0.5,
+            'min_height': 0.3,
+            'max_height': 1.0,
+            'angle_min': -0.7005,
+            'angle_max': 0.7005,
+            'angle_increment': 0.01,
+            'scan_time': 0.33,
             'range_min': 0.2,
-            'range_max': 10.0,
+            'range_max': 3.5,
             'use_inf': True
         }],
         output='screen'
@@ -140,6 +184,14 @@ def generate_launch_description():
     web_server = ExecuteProcess(
         cmd=['python3', '-m', 'http.server', '8000'],
         cwd='/home/hospobot/hospobot_ws/web_dash/',
+        output='screen'
+    )
+
+    # 6b. Mapping Dashboard Server (Port 8001) - Only starts in mapping mode
+    mapping_web_server = ExecuteProcess(
+        cmd=['python3', '-m', 'http.server', '8001'],
+        cwd='/home/hospobot/hospobot_ws/mapping_dash/',
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'mapping'"])),
         output='screen'
     )
 
@@ -153,57 +205,94 @@ def generate_launch_description():
     )
 
     # 8. Robot Localization (EKF)
-    ekf_config_path = os.path.join(get_package_share_directory('hospobot_bringup'), 'config', 'ekf.yaml')
     ekf_node = Node(
         package='robot_localization',
         executable='ekf_node',
         name='ekf_filter_node',
         output='screen',
-        parameters=[ekf_config_path]
+        remappings=[
+            ('odometry/filtered', '/odom')
+        ],
+        parameters=[os.path.join(hospobot_bringup_dir, 'config', 'ekf.yaml')]
     )
-
-    # 9. SLAM Toolbox (Online Async) - Re-enabled for traditional geometric mapping
-    slam_config_path = os.path.join(get_package_share_directory('hospobot_bringup'), 'config', 'mapper_params_online_async.yaml')
-    slam_node = Node(
-        package='slam_toolbox',
-        executable='async_slam_toolbox_node',
-        name='slam_toolbox',
+    # 9. RTAB-Map SLAM - For Mapping
+    rtabmap_node = Node(
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'mapping'"])),
+        package='rtabmap_slam',
+        executable='rtabmap',
+        name='rtabmap',
         output='screen',
-        parameters=[slam_config_path, {'use_sim_time': False}]
+        parameters=[{
+            'frame_id': 'base_footprint',
+            'subscribe_depth': True,
+            'subscribe_rgb': True,
+            'subscribe_scan': True,
+            'subscribe_odom_info': False, # We are using standard nav_msgs/Odometry from VIO
+            'approx_sync': True,
+            'map_always_update': True,
+            'Grid/FromDepth': 'false',
+            'Grid/MaxObstacleHeight': '1.5',
+            'Grid/MaxGroundHeight': '0.15',
+            'Grid/Sensor': '0', # 0=LaserScan, 1=Depth
+            'Grid/NormalsSegmentation': 'false',
+            'Grid/RangeMax': '12.0',
+            'Grid/RayTracing': 'true',
+            'RGBD/ProximityBySpace': 'true',
+            'RGBD/NeighborLinkRefining': 'true',
+            'Reg/Strategy': '1', # 1=ICP
+            'Reg/Force3DoF': 'true',
+            'Optimizer/Slam2D': 'true',
+            'Rtabmap/DetectionRate': '2.0',
+            'Icp/MaxTranslation': '3.0',
+            'Icp/MaxCorrespondenceDistance': '0.3',
+            'Icp/CorrespondenceRatio': '0.05',
+            'Mem/STMSize': '30',
+            'RGBD/OptimizeMaxError': '3.0',
+            'Vis/MinInliers': '8',
+            'Kp/DetectorStrategy': '0',
+            'Kp/MaxFeatures': '1000',
+            'RGBD/AngularUpdate': '0.1',
+            'RGBD/LinearUpdate': '0.1',
+            'RGBD/LoopClosureReextractFeatures': 'true'
+        }],
+        remappings=[
+            ('rgb/image', '/oak/rgb/image_raw'),
+            ('depth/image', '/oak/stereo/image_raw'),
+            ('rgb/camera_info', '/oak/rgb/camera_info'),
+            ('odom', '/odom'),
+            ('scan', '/scan'),
+            ('grid_map', '/map')
+        ],
+        arguments=[]
     )
 
-    # 10. OAK-D Pro W Camera (DepthAI or Custom Fallback)
-    has_depthai_driver = False
-    try:
-        get_package_share_directory('depthai_ros_driver')
-        has_depthai_driver = True
-    except Exception:
-        pass
+    # 9b. AMCL & Map Server - For Localization
+    localization_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(nav2_bringup_dir, 'launch', 'localization_launch.py')
+        ),
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'localization'"])),
+        launch_arguments={'map': map_yaml_file, 'use_sim_time': use_sim_time}.items()
+    )
 
-    if has_depthai_driver:
-        camera_node = IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
-                os.path.join(get_package_share_directory('depthai_ros_driver'), 'launch', 'camera.launch.py')
-            ),
-            launch_arguments={
-                'name': 'oak',
-                'parent_frame': 'oakd_frame',
-                'cam_pos_x': '0.0',
-                'cam_pos_y': '0.0',
-                'cam_pos_z': '0.0',
-                'cam_roll': '0.0',
-                'cam_pitch': '0.0',
-                'cam_yaw': '0.0'
-            }.items()
-        )
-    else:
-        camera_node = Node(
-            package='hospobot_perception',
-            executable='oakd_yolo_node',
-            name='oakd_yolo_node',
-            output='screen',
-            parameters=[{'blob_path': '/home/hospobot/hospobot_ws/mobilenet-ssd_6shave.blob'}]
-        )
+    # 10. OAK-D Pro W Camera running On-Device VIO
+    camera_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(get_package_share_directory('depthai_ros_driver_v3'), 'launch', 'vio.launch.py')
+        ),
+        launch_arguments={
+            'parent_frame': 'oakd_frame',
+            'params_file': os.path.join(get_package_share_directory('hospobot_bringup'), 'config', 'vio_custom.yaml')
+        }.items()
+    )
+
+    # 10b. Odometry Republisher (Fixes VIO child_frame_id)
+    odom_republisher_node = Node(
+        package='hospobot_can_bridge',
+        executable='odom_republisher',
+        name='odom_republisher',
+        output='screen'
+    )
 
     # 11. Object Detector Node (Semantic Obstacle Detection)
     object_detector_node = Node(
@@ -229,24 +318,106 @@ def generate_launch_description():
         output='screen'
     )
 
+    # 14. SocketCAN Receiver and Sender
+    socket_can_receiver_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(get_package_share_directory('ros2_socketcan'), 'launch', 'socket_can_receiver.launch.py')
+        ),
+        launch_arguments={
+            'interface': 'can0',
+            'interval_sec': '0.01',
+            'enable_can_fd': 'false',
+            'use_bus_time': 'false',
+            'auto_activate': 'true'
+        }.items()
+    )
+
+    socket_can_sender_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(get_package_share_directory('ros2_socketcan'), 'launch', 'socket_can_sender.launch.py')
+        ),
+        launch_arguments={
+            'interface': 'can0',
+            'timeout_sec': '0.01',
+            'enable_can_fd': 'false',
+            'enable_frame_loopback': 'false',
+            'auto_activate': 'true'
+        }.items()
+    )
+
+    # 15. System CAN Bridge (our custom node)
+    system_can_bridge_node = Node(
+        package='hospobot_can_bridge',
+        executable='system_can_bridge',
+        name='system_can_bridge',
+        output='screen'
+    )
+
+    # 16. PS5 Controller Joy Node
+    joy_node = Node(
+        package='joy',
+        executable='joy_node',
+        name='joy_node',
+        parameters=[{
+            'deadzone': 0.2,
+            'autorepeat_rate': 20.0,
+        }]
+    )
+
+    # 17. Teleop Twist Joy Node (PS5 mapping)
+    teleop_twist_joy_node = Node(
+        package='teleop_twist_joy',
+        executable='teleop_node',
+        name='teleop_twist_joy_node',
+        parameters=[{
+            'require_enable_button': True,
+            'enable_button': 5, # R1 Bumper
+            'axis_linear.x': 1, # Left stick Up/Down
+            'scale_linear.x': 0.43,
+            'axis_angular.z': 0, # Left stick Left/Right
+            'scale_angular.z': 0.46,
+        }],
+        remappings=[
+            ('/cmd_vel', '/cmd_vel_ps5')
+        ]
+    )
+
+    # 18. Footprint Publisher
+    footprint_publisher_node = Node(
+        package='hospobot_perception',
+        executable='footprint_publisher_node',
+        name='footprint_publisher',
+        output='screen'
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='false', description='Use simulation (Gazebo) clock if true'),
+        DeclareLaunchArgument('nav_mode', default_value='mapping', description='Navigation mode: mapping or localization'),
+        # Bring up can0 first so SocketCAN bridge finds it ready
+        can0_setup,
         robot_state_publisher_node,
-        odesc_hardware_node,
+        odrive_can_node,
         cmd_vel_mux_node,
         diagnostics_node,
         rosbridge_server,
-        # sllidar_node,
-        imu_node,
-        ekf_node,
-        slam_node,
-        slam_lifecycle_node,
+        sllidar_node,
+        laser_filter_node,
+        icp_odometry_node,
+        # imu_node, # Disabled, hardware removed
+        rtabmap_node,
+        localization_node,
         nav2_manager_node,
         pc_to_laser_node,
         web_server,
+        mapping_web_server,
         camera_node,
-        object_detector_node,
-        semantic_projection_node,
-        semantic_tracker_node
+        odom_republisher_node,
+        ekf_node,
+        socket_can_receiver_node,
+        socket_can_sender_node,
+        system_can_bridge_node,
+        joy_node,
+        teleop_twist_joy_node,
+        footprint_publisher_node
     ])
 

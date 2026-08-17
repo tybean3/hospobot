@@ -70,12 +70,11 @@ class SemanticProjectionNode(Node):
             pt_opt.header.frame_id = source_frame
             pt_opt.header.stamp = det_msg.header.stamp
             
-            # Check if 3D coordinates are already provided by the detection node
             if len(det.results) > 0 and det.results[0].pose.pose.position.z > 0:
                 # OAK-D uses Camera Optical Frame (Z forward, X right, Y down)
-                pt_opt.point.x = det.results[0].pose.pose.position.x
-                pt_opt.point.y = det.results[0].pose.pose.position.y
-                pt_opt.point.z = det.results[0].pose.pose.position.z
+                opt_x = det.results[0].pose.pose.position.x
+                opt_y = det.results[0].pose.pose.position.y
+                opt_z = det.results[0].pose.pose.position.z
             else:
                 u = int(det.bbox.center.position.x * depth_image.shape[1]) if det.bbox.center.position.x <= 1.0 else int(det.bbox.center.position.x)
                 v = int(det.bbox.center.position.y * depth_image.shape[0]) if det.bbox.center.position.y <= 1.0 else int(det.bbox.center.position.y)
@@ -91,13 +90,16 @@ class SemanticProjectionNode(Node):
                 z_depth = z_depth_mm / 1000.0 # Convert to meters
                 
                 # Pinhole projection
-                x_opt = (u - self.cx) * z_depth / self.fx
-                y_opt = (v - self.cy) * z_depth / self.fy
-                z_opt = z_depth
+                opt_x = (u - self.cx) * z_depth / self.fx
+                opt_y = (v - self.cy) * z_depth / self.fy
+                opt_z = z_depth
                 
-                pt_opt.point.x = float(x_opt)
-                pt_opt.point.y = float(y_opt)
-                pt_opt.point.z = float(z_opt)
+            # Convert from Optical Frame to Standard ROS Frame (oakd_frame)
+            # Optical: X right, Y down, Z forward
+            # Standard: X forward, Y left, Z up
+            pt_opt.point.x = float(opt_z)
+            pt_opt.point.y = float(-opt_x)
+            pt_opt.point.z = float(-opt_y)
             
             try:
                 pt_odom = tf2_geometry_msgs.do_transform_point(pt_opt, transform)
@@ -129,7 +131,11 @@ def main(args=None):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            try:
+                rclpy.shutdown()
+            except Exception:
+                pass
 
 if __name__ == '__main__':
     main()

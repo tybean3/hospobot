@@ -247,21 +247,23 @@ class OdescDriveNode(Node):
     def update_diagnostics(self):
         # Poll Left
         if self.left_serial and self.left_serial.is_open:
-            v, i, e = self.poll_motor_diag(self.left_serial)
+            v, i, e, s = self.poll_motor_diag(self.left_serial)
             if v: self.motor_diag["left"]["voltage"] = v
             if i: self.motor_diag["left"]["current"] = i
             if e: self.motor_diag["left"]["error"] = e
-            self.motor_diag["left"]["state"] = "Closed Loop" if self.motor_diag["left"]["error"] == "0" else "Error"
+            if s: self.motor_diag["left"]["state"] = s
+            else: self.motor_diag["left"]["state"] = "Error" if self.motor_diag["left"]["error"] != "0" else "Unknown"
         else:
             self.motor_diag["left"]["state"] = "Disconnected"
             
         # Poll Right
         if self.right_serial and self.right_serial.is_open:
-            v, i, e = self.poll_motor_diag(self.right_serial)
+            v, i, e, s = self.poll_motor_diag(self.right_serial)
             if v: self.motor_diag["right"]["voltage"] = v
             if i: self.motor_diag["right"]["current"] = i
             if e: self.motor_diag["right"]["error"] = e
-            self.motor_diag["right"]["state"] = "Closed Loop" if self.motor_diag["right"]["error"] == "0" else "Error"
+            if s: self.motor_diag["right"]["state"] = s
+            else: self.motor_diag["right"]["state"] = "Error" if self.motor_diag["right"]["error"] != "0" else "Unknown"
         else:
             self.motor_diag["right"]["state"] = "Disconnected"
             
@@ -273,6 +275,7 @@ class OdescDriveNode(Node):
         v = None
         i = None
         e = None
+        s = None
         try:
             # Voltage
             ser.write(b"r vbus_voltage\n")
@@ -298,9 +301,20 @@ class OdescDriveNode(Node):
                     if line.endswith('d'): line = line[:-1]
                     e = line
                     break
+
+            # State
+            ser.write(b"r axis0.current_state\n")
+            for _ in range(3):
+                line = ser.readline().decode('ascii', errors='ignore').strip()
+                if line and " " not in line:
+                    if line.endswith('d'): line = line[:-1]
+                    state_val = int(line)
+                    states = {1: "Idle", 3: "Calibration", 8: "Closed-Loop-Velocity"}
+                    s = states.get(state_val, f"State {state_val}")
+                    break
         except:
             pass
-        return v, i, e
+        return v, i, e, s
 
     def read_feedback(self, ser):
         if ser is not None and ser.is_open:

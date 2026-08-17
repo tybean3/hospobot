@@ -6,7 +6,7 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from std_msgs.msg import Header
 from vision_msgs.msg import Detection2DArray, Detection2D, ObjectHypothesisWithPose
-from sensor_msgs.msg import Image, CameraInfo, PointCloud2, PointField
+from sensor_msgs.msg import Image, CompressedImage, CameraInfo, PointCloud2, PointField
 import sensor_msgs_py.point_cloud2 as pc2
 from cv_bridge import CvBridge
 import depthai as dai
@@ -38,6 +38,7 @@ class OakdYoloNode(Node):
         self.det_pub = self.create_publisher(Detection2DArray, '/oakd/detections', 10)
         self.depth_pub = self.create_publisher(Image, '/oakd/depth/image_rect', 10)
         self.rgb_pub = self.create_publisher(Image, '/oakd/rgb/image_rect', qos_profile)
+        self.rgb_comp_pub = self.create_publisher(CompressedImage, '/oakd/rgb/image_rect/compressed', qos_profile)
         self.info_pub = self.create_publisher(CameraInfo, '/oakd/camera_info', 10)
         self.points_pub = self.create_publisher(PointCloud2, '/oakd/points', qos_profile)
         
@@ -163,7 +164,35 @@ class OakdYoloNode(Node):
         # Connect to device and start pipeline
         try:
             self.device = dai.Device(self.pipeline)
+        except Exception as first_err:
+            self.get_logger().warning(f"Initial connection failed: {first_err}. Attempting USB reset...")
+            try:
+                import fcntl
+                import subprocess
+                lsusb_out = subprocess.check_output(['lsusb'], text=True)
+                for line in lsusb_out.split('\n'):
+                    if '03e7:' in line: # Intel Movidius MyriadX
+                        parts = line.split()
+                        bus = parts[1]
+                        dev = parts[3].strip(':')
+                        dev_path = f'/dev/bus/usb/{bus}/{dev}'
+                        USBDEVFS_RESET = 21780
+                        try:
+                            with open(dev_path, 'w', os.O_WRONLY) as f:
+                                fcntl.ioctl(f.fileno(), USBDEVFS_RESET, 0)
+                            self.get_logger().info(f"Successfully reset OAK-D at {dev_path}")
+                        except Exception as e:
+                            self.get_logger().warning(f"Failed to reset {dev_path}: {e}")
+                time.sleep(3.0)
+            except Exception as e:
+                self.get_logger().warning(f"Could not reset USB: {e}")
+                
+            # Second attempt, forcing USB2.0 to prevent XLinkWriteError over a potentially degraded bus
+            self.get_logger().info("Connecting to OAK-D with USB 2.0 fallback...")
+            self.device = dai.Device(self.pipeline, maxUsbSpeed=dai.UsbSpeed.HIGH)
             
+        # Common setup for both success paths
+        try:
             # Read calibration data
             try:
                 self.calib_data = self.device.readCalibration()
@@ -181,8 +210,8 @@ class OakdYoloNode(Node):
             timer_period = 1.0 / self.update_rate
             self.timer = self.create_timer(timer_period, self.timer_callback)
             self.get_logger().info(f'OAK-D Pipeline started at {self.update_rate} Hz.')
-        except Exception as e:
-            self.get_logger().error(f"Failed to start OAK-D pipeline: {e}")
+        except Exception as setup_err:
+            self.get_logger().error(f"Failed to setup OAK-D pipeline queues: {setup_err}")
 
     def timer_callback(self):
         if not hasattr(self, 'device'):
@@ -204,7 +233,7 @@ class OakdYoloNode(Node):
             in_depth = frame
         
         # Check subscriber status
-        rgb_subbed = self.rgb_pub.get_subscription_count() > 0
+        rgb_subbed = self.rgb_pub.get_subscription_count() > 0 or self.rgb_comp_pub.get_subscription_count() > 0
         points_subbed = self.points_pub.get_subscription_count() > 0
         depth_subbed = self.depth_pub.get_subscription_count() > 0
         
@@ -258,9 +287,15 @@ class OakdYoloNode(Node):
                     hyp.hypothesis.score = detection.confidence
                     
                     # Pack the robust 3D coordinates from DepthAI
-                    hyp.pose.pose.position.x = float(detection.spatialCoordinates.x) / 1000.0
-                    hyp.pose.pose.position.y = float(detection.spatialCoordinates.y) / 1000.0
-                    hyp.pose.pose.position.z = float(detection.spatialCoordinates.z) / 1000.0
+                    x_opt = float(detection.spatialCoordinates.x) / 1000.0
+                    y_opt = float(detection.spatialCoordinates.y) / 1000.0
+                    z_opt = float(detection.spatialCoordinates.z) / 1000.0
+                    
+                    # Convert optical frame (Z forward, X right, Y down) 
+                    # to ROS body frame (X forward, Y left, Z up)
+                    hyp.pose.pose.position.x = z_opt
+                    hyp.pose.pose.position.y = -x_opt
+                    hyp.pose.pose.position.z = -y_opt
                     
                     det_msg.results.append(hyp)
                     det_array_msg.detections.append(det_msg)
@@ -279,27 +314,45 @@ class OakdYoloNode(Node):
                         
         # Publish RGB
         if rgb_subbed and self.last_rgb_frame is not None:
-            rgb_msg = self.bridge.cv2_to_imgmsg(self.last_rgb_frame, encoding="bgr8")
+            # Resize RGB to match depth dimensions exactly so RTAB-Map doesn't reject it
+            import cv2
+            if self.last_depth_frame is not None:
+                h_d, w_d = self.last_depth_frame.shape[:2]
+                pub_rgb = cv2.resize(self.last_rgb_frame, (w_d, h_d))
+            else:
+                pub_rgb = self.last_rgb_frame
+                
+            rgb_msg = self.bridge.cv2_to_imgmsg(pub_rgb, encoding="bgr8")
             rgb_msg.header.stamp = now
-            rgb_msg.header.frame_id = "oakd_frame"
+            rgb_msg.header.frame_id = "oakd_optical_frame"
             self.rgb_pub.publish(rgb_msg)
+            
+            # Publish CompressedImage
+            import cv2
+            comp_msg = CompressedImage()
+            comp_msg.header.stamp = now
+            comp_msg.header.frame_id = "oakd_optical_frame"
+            comp_msg.format = "jpeg"
+            _, encoded_image = cv2.imencode('.jpg', pub_rgb, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
+            comp_msg.data = encoded_image.flatten().tolist()
+            self.rgb_comp_pub.publish(comp_msg)
             
         # Publish Depth Image (16-bit uint)
         if depth_subbed and self.last_depth_frame is not None:
             depth_msg = self.bridge.cv2_to_imgmsg(self.last_depth_frame, encoding="16UC1")
             depth_msg.header.stamp = now
-            depth_msg.header.frame_id = "oakd_frame"
+            depth_msg.header.frame_id = "oakd_optical_frame"
             self.depth_pub.publish(depth_msg)
             
         # Publish Camera Info
         if depth_subbed or rgb_subbed or points_subbed:
-            h, w = (300, 300) if self.use_yolo else (400, 640)
+            h, w = (400, 640)
             if self.last_depth_frame is not None:
                 h, w = self.last_depth_frame.shape[:2]
             
             info_msg = CameraInfo()
             info_msg.header.stamp = now
-            info_msg.header.frame_id = "oakd_frame"
+            info_msg.header.frame_id = "oakd_optical_frame"
             info_msg.width = w
             info_msg.height = h
             info_msg.k = [float(fx), 0.0, float(cx), 0.0, float(fy), float(cy), 0.0, 0.0, 1.0]
@@ -337,9 +390,10 @@ class OakdYoloNode(Node):
                 cx_dec = cx / decimation
                 cy_dec = cy / decimation
                 
-                # Project pixels to 3D camera coordinates
-                x_val = (u_val - cx_dec) * z_val / fx_dec
-                y_val = (v_val - cy_dec) * z_val / fy_dec
+                # Project pixels to 3D camera coordinates (optical frame)
+                x_opt = (u_val - cx_dec) * z_val / fx_dec
+                y_opt = (v_val - cy_dec) * z_val / fy_dec
+                z_opt = z_val
                 
                 # Extract and pack BGR color channels
                 # Resize RGB to match the decimated depth map if they don't match
@@ -359,15 +413,17 @@ class OakdYoloNode(Node):
                 rgb_float = rgb_packed.view(np.float32)
                 
                 # Create structured array for fast ROS serialization
-                point_data = np.zeros(x_val.shape[0], dtype=[
+                point_data = np.zeros(x_opt.shape[0], dtype=[
                     ('x', np.float32),
                     ('y', np.float32),
                     ('z', np.float32),
                     ('rgb', np.float32)
                 ])
-                point_data['x'] = x_val
-                point_data['y'] = y_val
-                point_data['z'] = z_val
+                # Convert optical frame (Z forward, X right, Y down) 
+                # to ROS body frame (X forward, Y left, Z up)
+                point_data['x'] = z_opt
+                point_data['y'] = -x_opt
+                point_data['z'] = -y_opt
                 point_data['rgb'] = rgb_float
                 
                 # Create Header
@@ -384,6 +440,12 @@ class OakdYoloNode(Node):
         if self.use_yolo and det_array_msg is not None:
             self.det_pub.publish(det_array_msg)
 
+    def destroy_node(self):
+        if hasattr(self, 'device'):
+            self.get_logger().info('Closing OAK-D device...')
+            self.device.close()
+        super().destroy_node()
+
 def main(args=None):
     rclpy.init(args=args)
     node = OakdYoloNode()
@@ -394,7 +456,10 @@ def main(args=None):
     finally:
         node.destroy_node()
         if rclpy.ok():
-            rclpy.shutdown()
+            try:
+                rclpy.shutdown()
+            except Exception:
+                pass
 
 if __name__ == '__main__':
     main()

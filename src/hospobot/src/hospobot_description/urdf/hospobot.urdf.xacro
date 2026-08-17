@@ -7,7 +7,7 @@
     <xacro:property name="shell_h" value="0.368"/>
     
     <xacro:property name="wheel_radius" value="0.0625"/>
-    <xacro:property name="track_width" value="0.280"/>
+    <xacro:property name="track_width" value="0.0826"/>
     <xacro:property name="axle_z_offset" value="-0.0526"/>
 
     <link name="base_footprint"/>
@@ -70,7 +70,7 @@
     <joint name="laser_joint" type="fixed">
         <parent link="base_link"/>
         <child link="laser_frame"/>
-        <origin xyz="0 0 0.300" rpy="0 0 0"/>
+        <origin xyz="0 0 0.500" rpy="0 0 0"/>
     </joint>
 
     <link name="imu_link"/>
@@ -94,9 +94,15 @@
     </joint>
     <link name="oakd_frame"/>
     <joint name="oakd_joint" type="fixed">
-        <parent link="base_link"/>
+        <parent link="base_footprint"/>
         <child link="oakd_frame"/>
-        <origin xyz="0 0 1.1725" rpy="0 0.34906585 0"/>
+        <origin xyz="0.22 0 1.20813" rpy="0 0.34906585 0"/>
+    </joint>
+    <link name="oakd_optical_frame"/>
+    <joint name="oakd_optical_joint" type="fixed">
+        <parent link="oakd_frame"/>
+        <child link="oakd_optical_frame"/>
+        <origin xyz="0 0 0" rpy="-1.57079632679 0 -1.57079632679"/>
     </joint>
 
 </robot>

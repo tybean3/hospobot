@@ -23,11 +23,63 @@ class DiagnosticsNode(Node):
         except Exception:
             topics = []
 
+        # OS Checks
+        try:
+            # OAK-D
+            lsusb_out = subprocess.check_output(['lsusb'], text=True)
+            oakd_plugged = '03e7:2485' in lsusb_out or 'Movidius' in lsusb_out or 'Luxonis' in lsusb_out
+        except:
+            oakd_plugged = False
+
+        try:
+            # USB-CAN Adapter (OpenMoko / Geschwister Schneider CAN, ID 1d50:606f)
+            lsusb_can = subprocess.check_output(['lsusb'], text=True)
+            can_plugged = '1d50:606f' in lsusb_can
+        except:
+            can_plugged = False
+
+        try:
+            # Ethernet
+            ip_link_eth = subprocess.check_output(['ip', '-br', 'link', 'show'], text=True)
+            eth_plugged = any(line for line in ip_link_eth.splitlines() if ('eth' in line or 'en' in line) and 'UP' in line)
+            # SSH
+            ssh_connected = 'SSH_CONNECTION' in subprocess.check_output(['env'], text=True) or len(subprocess.check_output(['ss', '-tnp'], text=True).split('sshd')) > 1
+        except:
+            eth_plugged = False
+            ssh_connected = False
+
+        try:
+            # WiFi
+            wifi_ssid = subprocess.check_output(['iwgetid', '-r'], text=True).strip()
+        except:
+            wifi_ssid = ""
+
+        try:
+            # Bluetooth
+            bt_out = subprocess.check_output(['bluetoothctl', 'devices', 'Connected'], text=True)
+            bt_connected = len(bt_out.strip()) > 0
+        except:
+            bt_connected = False
+
         diag_data = {
             'battery': 85,
             'ping': 15,
             'raw_nodes': nodes,
             'raw_topics': topics,
+            'os': {
+                'oakd': oakd_plugged,
+                'can': can_plugged,
+                'eth': eth_plugged,
+                'ssh': ssh_connected,
+                'wifi_ssid': wifi_ssid,
+                'bt': bt_connected
+            },
+            'pipelines': {
+                'driving': 'odesc_drive_node' in nodes and 'cmd_vel_mux' in nodes,
+                'nav2': 'nav2_manager_node' in nodes or 'bt_navigator' in nodes,
+                'semantic': 'oakd_yolo_node' in nodes or 'semantic_tracker_node' in nodes,
+                'comms': 'system_can_bridge' in nodes and 'rosbridge_websocket' in nodes
+            },
             'nodes': {
                 'node_lidar': 'FUNCTIONAL' if any(n in nodes for n in ['sllidar_node', 'rplidar_node']) else 'OFFLINE',
                 'node_imu': 'FUNCTIONAL' if 'bno086_node' in nodes else 'OFFLINE',

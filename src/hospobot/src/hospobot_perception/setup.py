@@ -29,7 +29,9 @@ setup(
             'oakd_yolo_node = hospobot_perception.oakd_yolo_node:main',
             'semantic_projection_node = hospobot_perception.semantic_projection_node:main',
             'semantic_tracker_node = hospobot_perception.semantic_tracker_node:main',
-            'semantic_costmap_bridge = hospobot_perception.semantic_costmap_bridge:main'
+            'footprint_publisher_node = hospobot_perception.footprint_publisher_node:main',
+            'semantic_costmap_bridge = hospobot_perception.semantic_costmap_bridge:main',
+            'laser_filter_node = hospobot_perception.laser_filter_node:main'
         ],
     },
 )

@@ -90,7 +90,7 @@
             gap: 15px;
             align-items: center;
             color: #94a3b8;
-            font-size: 0.85rem;
+            font-size: 1.3vh;
             font-weight: bold;
         }
 
@@ -182,7 +182,7 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
             transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
             width: 130px;
-            min-height: 80px;
+            min-height: 10vh;
             box-sizing: border-box;
             position: relative;
             z-index: 10;
@@ -223,7 +223,7 @@
 
         .network-item h3 {
             margin: 4px 0;
-            font-size: 0.75rem;
+            font-size: 1.1vh;
             color: #f1f5f9;
             word-wrap: break-word;
             word-break: break-all;
@@ -320,7 +320,7 @@
 
         .action-btn {
             padding: 6px 10px;
-            font-size: 0.8rem;
+            font-size: 1.2vh;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
 
@@ -426,7 +426,7 @@
             color: #e2e8f0;
             border-bottom: 1px solid #334155;
             padding-bottom: 15px;
-            font-size: 1.2rem;
+            font-size: 1.8vh;
         }
 
         .modal textarea {
@@ -484,7 +484,7 @@
         .info-card h4 {
             margin: 0 0 8px 0;
             color: #94a3b8;
-            font-size: 0.75rem;
+            font-size: 1.1vh;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
@@ -492,7 +492,7 @@
         .info-card .data {
             font-family: 'Courier New', Courier, monospace;
             color: #38bdf8;
-            font-size: 1.1rem;
+            font-size: 1.6vh;
             font-weight: bold;
         }
 
@@ -503,6 +503,7 @@
             left: 50%;
             width: 0;
             height: 0;
+            transform: scale(0.4);
             transition: transform 0.1s linear;
             will-change: transform;
         }
@@ -611,7 +612,7 @@
             padding: 6px 10px;
             border-radius: 6px;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 0.75rem;
+            font-size: 1.1vh;
             text-align: center;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
             white-space: nowrap;
@@ -654,7 +655,7 @@
 
         .odrive-state {
             display: block;
-            font-size: 0.7rem;
+            font-size: 1vh;
             color: #94a3b8;
             margin-top: 4px;
             letter-spacing: 1px;
@@ -671,7 +672,7 @@
             background: var(--panel-bg);
             border: 1px solid #334155;
             color: var(--accent-blue);
-            font-size: 1.2rem;
+            font-size: 1.8vh;
             padding: 10px 20px;
             border-radius: 8px;
             cursor: pointer;
@@ -794,7 +795,7 @@
             border: 2px solid #334155;
             color: #94a3b8;
             border-radius: 10px;
-            font-size: 1.2rem;
+            font-size: 1.8vh;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.1s ease;
@@ -859,7 +860,7 @@
             border: none;
             color: var(--accent-blue);
             font-family: 'Courier New', Courier, monospace;
-            font-size: 1.2rem;
+            font-size: 1.8vh;
             font-weight: bold;
             width: 100%;
             text-align: right;
@@ -869,7 +870,7 @@
         .dispatch-btn {
             margin-top: 25px;
             padding: 15px;
-            font-size: 1.1rem;
+            font-size: 1.6vh;
             letter-spacing: 1px;
             text-transform: uppercase;
             width: 100%;
@@ -945,12 +946,12 @@
         .motor-name {
             font-weight: bold;
             color: #38bdf8;
-            font-size: 1.1rem;
+            font-size: 1.6vh;
         }
 
         .motor-detail {
             color: #94a3b8;
-            font-size: 0.85rem;
+            font-size: 1.3vh;
             font-family: 'Courier New', Courier, monospace;
         }
 
@@ -982,7 +983,7 @@
 
         .setting-desc {
             display: block;
-            font-size: 0.8rem;
+            font-size: 1.2vh;
             color: #64748b;
             margin-top: 4px;
             font-weight: normal;
@@ -1039,7 +1040,7 @@
             color: var(--accent-blue);
             padding: 8px 12px;
             border-radius: 6px;
-            width: 80px;
+            width: 10vh;
             font-family: 'Courier New', Courier, monospace;
             font-weight: bold;
             outline: none;
@@ -1098,8 +1099,19 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
-            overflow-y: auto;
             padding-right: 10px;
+            height: 100%;
+            min-height: 0;
+        }
+
+        #semantic-cards-container {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding-right: 5px;
+            min-height: 0;
         }
 
         .semantic-card {
@@ -1120,7 +1132,7 @@
         .semantic-info h4 {
             margin: 0 0 5px 0;
             color: #f8fafc;
-            font-size: 1.2rem;
+            font-size: 1.8vh;
             text-transform: capitalize;
         }
 
@@ -1128,7 +1140,7 @@
             background: #334155;
             padding: 2px 6px;
             border-radius: 4px;
-            font-size: 0.7rem;
+            font-size: 1vh;
             color: #cbd5e1;
             margin-left: 10px;
             vertical-align: super;
@@ -1137,7 +1149,7 @@
         .semantic-details {
             display: flex;
             gap: 15px;
-            font-size: 0.85rem;
+            font-size: 1.3vh;
             color: #94a3b8;
             font-family: 'Courier New', Courier, monospace;
         }
@@ -1155,9 +1167,407 @@
             border-radius: 8px;
             border: 1px solid #334155;
             font-family: monospace;
-            font-size: 0.8rem;
+            font-size: 1.2vh;
             height: 150px;
             overflow-y: auto;
+        }
+
+        /* --- VIEW 5: PROXIMITY SENSORS --- */
+        .proximity-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            flex-grow: 1;
+            width: 100%;
+            max-width: 1450px;
+            box-sizing: border-box;
+            background-color: #0f172a;
+            padding: 2vh;
+            gap: 3vh;
+            height: calc(100vh - 150px);
+            overflow: hidden;
+        }
+
+        .dashboard-side-panel {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5vh;
+            flex-grow: 1;
+            max-width: 1000px;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .dashboard-widget {
+            background: rgba(30, 41, 59, 0.35);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 1.5vh;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            min-height: 0;
+        }
+
+        .widget-title {
+            font-size: 1.2vh;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #38bdf8;
+            margin-bottom: 1vh;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.5vh;
+        }
+
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1vh;
+        }
+
+        .telemetry-card {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 10px;
+            padding: 1vh 1.2vh;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .telemetry-card .label {
+            font-size: 1vh;
+            color: #64748b;
+            margin-bottom: 0.2vh;
+        }
+
+        .telemetry-card .value {
+            font-size: 1.8vh;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .telemetry-card .subtext {
+            font-size: 1vh;
+            color: #475569;
+            margin-top: 2px;
+        }
+
+        .status-indicators-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 8px;
+            padding: 6px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.01);
+        }
+
+        .status-dot-large {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #64748b;
+            box-shadow: 0 0 6px #64748b;
+            transition: all 0.3s ease;
+        }
+
+
+        /* Scale down the sensors widget internals */
+        #sensors-widget-grid .status-indicator {
+            padding: 3px 6px;
+            gap: 6px;
+        }
+
+        #sensors-widget-grid .status-info .name {
+            font-size: 0.85vh;
+        }
+
+        #sensors-widget-grid .status-info .detail {
+            font-size: 0.8vh;
+        }
+
+        .status-dot-large.ok,
+        .status-dot-large.connected {
+            background-color: #10b981;
+            box-shadow: 0 0 8px #10b981;
+        }
+
+        .status-dot-large.err,
+        .status-dot-large.candown {
+            background-color: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+        }
+
+        .status-dot-large.warn,
+        .status-dot-large.stalled {
+            background-color: #f59e0b;
+            box-shadow: 0 0 8px #f59e0b;
+        }
+
+        .status-dot-large.offline,
+        .status-dot-large.disconnected {
+            background-color: #64748b;
+            box-shadow: 0 0 6px #64748b;
+        }
+
+        .status-info {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            /* allows text truncation inside flex item */
+        }
+
+        .status-info .name {
+            font-size: 1.2vh;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .status-info .detail {
+            font-size: 1vh;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .power-summary {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .battery-ring-container {
+            position: relative;
+            width: 10vh;
+            height: 10vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .battery-percent-text {
+            position: absolute;
+            font-size: 1.6vh;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+
+        .power-details {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .robot-outline-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-evenly;
+            padding: 2.5vh;
+            background: rgba(30, 41, 59, 0.2);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 100%;
+            box-sizing: border-box;
+            aspect-ratio: 1 / 2;
+        }
+
+        .robot-outline-top {
+            width: 25%;
+            height: 1.5vh;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+        }
+
+        .robot-outline-box {
+            height: 28%;
+            aspect-ratio: 1 / 1;
+            border: 3px solid #ffffff;
+            border-radius: 16px;
+            background-color: rgba(30, 41, 59, 0.6);
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .robot-outline-box:hover {
+            background-color: rgba(30, 41, 59, 0.8);
+            border-color: #38bdf8;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.2);
+        }
+
+        .robot-outline-box .box-label {
+            position: absolute;
+            bottom: 1vh;
+            font-size: 1vh;
+            color: #94a3b8;
+            pointer-events: none;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .robot-outline-base {
+            width: 70%;
+            height: 2.5vh;
+            background-color: #000000;
+            border: 2px solid #334155;
+            clip-path: polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+        }
+
+        .sensor {
+            position: absolute;
+            width: 6%;
+            height: 6%;
+            z-index: 10;
+        }
+
+        /* Side sensors */
+        .sensor.side-left {
+            left: -3%;
+            top: 15%;
+        }
+
+        .sensor.side-right {
+            right: -3%;
+            top: 15%;
+        }
+
+        /* Front sensors */
+        .sensor.front-left {
+            left: 20%;
+            top: 8%;
+        }
+
+        .sensor.front-right {
+            right: 20%;
+            top: 8%;
+        }
+
+        .sensor-dot {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: #64748b;
+            box-shadow: 0 0 5px #64748b;
+            z-index: 12;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+
+        .sensor-val {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #475569;
+            color: #f8fafc;
+            padding: 0.3vh 0.8vh;
+            border-radius: 6px;
+            font-size: 1vh;
+            font-family: monospace;
+            white-space: nowrap;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            font-weight: bold;
+            z-index: 15;
+        }
+
+        /* Positioning of value labels relative to the dot */
+        .sensor.side-left .sensor-val {
+            right: 120%;
+            top: -390%;
+        }
+
+        .sensor.side-right .sensor-val {
+            left: 120%;
+            top: -390%;
+        }
+
+        .sensor.front-left .sensor-val,
+        .sensor.front-right .sensor-val {
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 120%;
+        }
+
+        .sensor-beam {
+            position: absolute;
+            pointer-events: none;
+            z-index: 8;
+        }
+
+        /* Side left beam */
+        .sensor.side-left .sensor-beam {
+            width: 300%;
+            height: 500%;
+            right: 150%;
+            top: -200%;
+        }
+
+        /* Side right beam */
+        .sensor.side-right .sensor-beam {
+            width: 300%;
+            height: 500%;
+            left: 150%;
+            top: -200%;
+        }
+
+        /* Front beams */
+        .sensor.front-left .sensor-beam,
+        .sensor.front-right .sensor-beam {
+            width: 5vh;
+            height: 3vh;
+            top: calc(1.6vh);
+            left: -1.8vh;
+        }
+
+        .room-btn {
+            position: absolute;
+            background-color: #10b981;
+            cursor: pointer;
+            z-index: 20;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: transform 0.2s, background-color 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 6px;
+        }
+        .room-btn:hover {
+            transform: scale(1.1);
+            background-color: #059669;
+        }
+        .room-label {
+            position: absolute;
+            color: #e2e8f0;
+            font-size: 30px;
+            font-weight: bold;
+            pointer-events: none;
+            white-space: nowrap;
+            top: 50%;
+            transform: translateY(-50%);
         }
     </style>
 </head>
@@ -1166,14 +1576,16 @@
 
     <div class="nav-bar">
         <div style="display: flex; gap: 20px;">
-            <button id="btn-network" class="nav-btn active" onclick="switchView('view-network', 'btn-network')">
+            <button id="btn-network" class="nav-btn" onclick="switchView('view-network', 'btn-network')">
                 Network</button>
             <button id="btn-status" class="nav-btn" onclick="switchView('view-status', 'btn-status')">
-                Status</button>
+                Map</button>
+            <button id="btn-proximity" class="nav-btn active" onclick="switchView('view-proximity', 'btn-proximity')">
+                Dashboard</button>
             <button id="btn-semantic" class="nav-btn" onclick="switchView('view-semantic', 'btn-semantic')">Semantic
                 Debug
             </button>
-            <button id="btn-settings" class="nav-btn" onclick="switchView('view-settings', 'btn-settings')">Hospobot
+            <button id="btn-settings" class="nav-btn" onclick="switchView('view-settings', 'btn-settings')">Settings
             </button>
         </div>
 
@@ -1194,19 +1606,16 @@
     <div id="guide-v" class="snap-guide"></div>
     <div id="guide-h" class="snap-guide"></div>
 
-    <div id="view-network" class="view-container active">
+    <div id="view-network" class="view-container">
         <div class="top-controls">
             <button class="btn-global" onclick="restartNetwork()">Reboot Network</button>
         </div>
         <h1 class="network-header">ROS 2 <span>Network</span></h1>
-        <div class="dashboard" id="dashboard" style="position: relative; min-width: 1030px; min-height: 1610px; margin-top: 20px;"></div>
+        <div class="dashboard" id="dashboard"
+            style="position: relative; min-width: 1030px; min-height: 1610px; margin-top: 20px;"></div>
     </div>
 
     <div id="view-status" class="view-container">
-
-        <button class="burger-btn" onclick="toggleSidebar()">
-            ☰ Controller
-        </button>
 
         <div class="nav-overlay-left">
             <div class="info-card">
@@ -1230,91 +1639,19 @@
         <div class="hotspot-viewport" id="viewport">
             <div id="map-wrapper">
                 <div class="slam-map" id="slam-map">
-                    <div class="map-wall" style="top: 2150px; left: 1850px; width: 900px; height: 50px;"></div>
-                    <div class="map-wall" style="top: 1250px; left: 1850px; width: 900px; height: 50px;"></div>
-                    <div class="map-wall" style="top: 1250px; left: 1850px; width: 50px; height: 950px;"></div>
-                    <div class="map-wall" style="top: 1250px; left: 2700px; width: 50px; height: 950px;"></div>
-                    <div class="map-wall"
-                        style="top: 1600px; left: 2200px; width: 200px; height: 200px; border-radius: 12px;"></div>
+                    <img src="floorplan.png" id="floorplan-img" style="position: absolute; top: 1000px; left: 1500px; width: 1024px; height: 2048px; object-fit: contain; pointer-events: auto; user-select: none;" onclick="alert('X: ' + Math.round((event.clientX - this.getBoundingClientRect().left) * (1024 / this.getBoundingClientRect().width)) + ', Y: ' + Math.round((event.clientY - this.getBoundingClientRect().top) * (2048 / this.getBoundingClientRect().height)))" />
 
                     <canvas id="path-canvas" width="4000" height="4000"></canvas>
-                </div>
-            </div>
-
-            <div class="rpm-indicator left-rpm">
-                <div>L: <span id="rpm-l">0</span> RPM</div>
-                <div class="odrive-state" id="odrive-l">Closed-Loop VEL</div>
-            </div>
-            <div class="rpm-indicator right-rpm">
-                <div>R: <span id="rpm-r">0</span> RPM</div>
-                <div class="odrive-state" id="odrive-r">Closed-Loop VEL</div>
-            </div>
-
-            <div class="robot-body" id="robot-model">
-                <div class="robot-front"></div>
-                <div class="wheel left"></div>
-                <div class="wheel right"></div>
-                <div class="robot-center"></div>
-                <div class="robot-vel-indicator">
-                    LIN: <span id="vel-linear">0.00</span> m/s | ANG: <span id="vel-angular">0.00</span> rad/s
+                    <div class="robot-body" id="robot-model" style="transition: transform 0.1s linear;">
+                        <div class="robot-front"></div>
+                        <div class="robot-center"></div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div id="status-dimmer" class="status-dimmer" onclick="toggleSidebar()"></div>
-
-        <div id="controller-sidebar" class="controller-sidebar">
-            <button class="close-sidebar-btn" onclick="toggleSidebar()">&times;</button>
-            <h2>Hospobot <span>Controller</span></h2>
-
-            <div class="mode-toggle">
-                <button id="btn-mode-manual" class="mode-toggle-btn active" onclick="switchControlMode('manual')">Manual
-                    Control</button>
-                <button id="btn-mode-auto" class="mode-toggle-btn" onclick="switchControlMode('auto')">Autonomous
-                    Mode</button>
-            </div>
-
-            <div id="panel-manual" class="control-panel active">
-                <p style="color: #94a3b8; font-size: 0.9rem; text-align: center; margin-top: 0;">Direct twist commands
-                    to /cmd_vel</p>
-                <div class="wasd-container">
-                    <button class="wasd-btn w-btn" onmousedown="handleManualInput('w', true)"
-                        onmouseup="handleManualInput('w', false)"
-                        onmouseleave="handleManualInput('w', false)">W</button>
-                    <button class="wasd-btn a-btn" onmousedown="handleManualInput('a', true)"
-                        onmouseup="handleManualInput('a', false)"
-                        onmouseleave="handleManualInput('a', false)">A</button>
-                    <button class="wasd-btn s-btn" onmousedown="handleManualInput('s', true)"
-                        onmouseup="handleManualInput('s', false)"
-                        onmouseleave="handleManualInput('s', false)">S</button>
-                    <button class="wasd-btn d-btn" onmousedown="handleManualInput('d', true)"
-                        onmouseup="handleManualInput('d', false)"
-                        onmouseleave="handleManualInput('d', false)">D</button>
-                </div>
-                <p style="color: var(--accent-blue); font-size: 0.8rem; text-align: center; margin-top: 15px;">Keyboard
-                    WASD Supported</p>
-            </div>
-
-            <div id="panel-auto" class="control-panel">
-                <p style="color: #94a3b8; font-size: 0.9rem; text-align: center; margin-top: 0;">Send Pose to Nav2
-                    Action Server</p>
-                <div class="auto-form">
-                    <div class="input-group">
-                        <label>X Coordinate (m)</label>
-                        <input type="number" id="input-goal-x" value="6.00" step="0.1">
-                    </div>
-                    <div class="input-group">
-                        <label>Y Coordinate (m)</label>
-                        <input type="number" id="input-goal-y" value="6.00" step="0.1">
-                    </div>
-                    <div class="input-group">
-                        <label>Theta (deg)</label>
-                        <input type="number" id="input-goal-theta" value="90" step="1">
-                    </div>
-                    <button class="btn-primary dispatch-btn" onclick="dispatchManualGoal()">Dispatch HospoBot</button>
-                </div>
-            </div>
-        </div>
+        <div id="status-dimmer" class="status-dimmer" style="display:none;"></div>
+        <div id="controller-sidebar" class="controller-sidebar" style="display:none;"></div>
     </div>
 
     <div id="view-semantic" class="view-container">
@@ -1328,8 +1665,504 @@
                 <div id="semantic-cards-container">
                     <p style="color: #64748b; text-align: center; margin-top: 40px;">No objects tracked currently.</p>
                 </div>
-                <div class="semantic-console" id="semantic-console">
-                    > Awaiting semantic data on /semantic/tracked_objects...
+                <div class="camera-feed-container" id="camera-feed-container"
+                    style="flex-shrink: 0; background: rgba(15, 23, 42, 0.9); border: 1px solid #334155; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 200px;">
+                    <img id="live-camera-feed" src=""
+                        alt="Live Camera Feed (Waiting for /oakd/rgb/image_rect/compressed...)"
+                        style="width: 100%; height: auto; display: block;" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-proximity" class="view-container active">
+        <div class="proximity-container">
+            <div class="robot-outline-wrapper">
+                <div class="widget-title" style="margin-bottom: auto; width: 100%; justify-content: center;">Proximity
+                </div>
+                <div class="robot-outline-top"></div>
+
+                <!-- Box 3 -->
+                <div class="robot-outline-box">
+                    <div class="sensor front-left" id="sensor-fl-3">
+                        <div class="sensor-dot"></div>
+                        <div class="sensor-beam">
+                            <svg viewBox="0 0 100 60">
+                                <path class="arc-outer" d="M 5 0 A 45 45 0 0 0 95 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-middle" d="M 20 0 A 30 30 0 0 0 80 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-inner" d="M 35 0 A 15 15 0 0 0 65 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <div class="sensor-val">--m</div>
+                    </div>
+                    <div class="sensor front-right" id="sensor-fr-3">
+                        <div class="sensor-dot"></div>
+                        <div class="sensor-beam">
+                            <svg viewBox="0 0 100 60">
+                                <path class="arc-outer" d="M 5 0 A 45 45 0 0 0 95 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-middle" d="M 20 0 A 30 30 0 0 0 80 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-inner" d="M 35 0 A 15 15 0 0 0 65 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <div class="sensor-val">--m</div>
+                    </div>
+                    <div class="sensor side-left" id="sensor-sl-3">
+                        <div class="sensor-dot"></div>
+                        <div class="sensor-beam">
+                            <svg viewBox="0 0 60 100" style="width: 30px; height: 50px;">
+                                <path class="arc-outer" d="M 60 5 A 45 45 0 0 0 60 95" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-middle" d="M 60 20 A 30 30 0 0 0 60 80" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-inner" d="M 60 35 A 15 15 0 0 0 60 65" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <div class="sensor-val">--m</div>
+                    </div>
+                    <div class="sensor side-right" id="sensor-sr-3">
+                        <div class="sensor-dot"></div>
+                        <div class="sensor-beam">
+                            <svg viewBox="0 0 60 100" style="width: 30px; height: 50px;">
+                                <path class="arc-outer" d="M 0 5 A 45 45 0 0 1 0 95" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-middle" d="M 0 20 A 30 30 0 0 1 0 80" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-inner" d="M 0 35 A 15 15 0 0 1 0 65" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <div class="sensor-val">--m</div>
+                    </div>
+                    <div class="box-label">Top</div>
+                </div>
+
+                <!-- Box 2 -->
+                <div class="robot-outline-box">
+                    <div class="sensor front-left" id="sensor-fl-2">
+                        <div class="sensor-dot"></div>
+                        <div class="sensor-beam">
+                            <svg viewBox="0 0 100 60">
+                                <path class="arc-outer" d="M 5 0 A 45 45 0 0 0 95 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-middle" d="M 20 0 A 30 30 0 0 0 80 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-inner" d="M 35 0 A 15 15 0 0 0 65 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <div class="sensor-val">--m</div>
+                    </div>
+                    <div class="sensor front-right" id="sensor-fr-2">
+                        <div class="sensor-dot"></div>
+                        <div class="sensor-beam">
+                            <svg viewBox="0 0 100 60">
+                                <path class="arc-outer" d="M 5 0 A 45 45 0 0 0 95 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-middle" d="M 20 0 A 30 30 0 0 0 80 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-inner" d="M 35 0 A 15 15 0 0 0 65 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <div class="sensor-val">--m</div>
+                    </div>
+                    <div class="box-label">Middle</div>
+                </div>
+
+                <!-- Box 1 -->
+                <div class="robot-outline-box">
+                    <div class="sensor front-left" id="sensor-fl-1">
+                        <div class="sensor-dot"></div>
+                        <div class="sensor-beam">
+                            <svg viewBox="0 0 100 60">
+                                <path class="arc-outer" d="M 5 0 A 45 45 0 0 0 95 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-middle" d="M 20 0 A 30 30 0 0 0 80 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-inner" d="M 35 0 A 15 15 0 0 0 65 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <div class="sensor-val">--m</div>
+                    </div>
+                    <div class="sensor front-right" id="sensor-fr-1">
+                        <div class="sensor-dot"></div>
+                        <div class="sensor-beam">
+                            <svg viewBox="0 0 100 60">
+                                <path class="arc-outer" d="M 5 0 A 45 45 0 0 0 95 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-middle" d="M 20 0 A 30 30 0 0 0 80 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-inner" d="M 35 0 A 15 15 0 0 0 65 0" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <div class="sensor-val">--m</div>
+                    </div>
+                    <div class="sensor side-left" id="sensor-sl-1">
+                        <div class="sensor-dot"></div>
+                        <div class="sensor-beam">
+                            <svg viewBox="0 0 60 100" style="width: 30px; height: 50px;">
+                                <path class="arc-outer" d="M 60 5 A 45 45 0 0 0 60 95" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-middle" d="M 60 20 A 30 30 0 0 0 60 80" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-inner" d="M 60 35 A 15 15 0 0 0 60 65" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <div class="sensor-val">--m</div>
+                    </div>
+                    <div class="sensor side-right" id="sensor-sr-1">
+                        <div class="sensor-dot"></div>
+                        <div class="sensor-beam">
+                            <svg viewBox="0 0 60 100" style="width: 30px; height: 50px;">
+                                <path class="arc-outer" d="M 0 5 A 45 45 0 0 1 0 95" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-middle" d="M 0 20 A 30 30 0 0 1 0 80" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                                <path class="arc-inner" d="M 0 35 A 15 15 0 0 1 0 65" fill="none"
+                                    stroke="rgba(255,255,255,0.2)" stroke-width="8" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <div class="sensor-val">--m</div>
+                    </div>
+                    <div class="box-label">Bottom</div>
+                </div>
+
+                <div class="robot-outline-base"></div>
+            </div>
+
+            <!-- Side Panel for Telemetry & Diagnostics -->
+            <div class="dashboard-side-panel">
+                <!-- Power Widget -->
+                <div class="dashboard-widget">
+                    <div class="widget-title">
+                        Power
+                    </div>
+                    <div class="power-summary">
+                        <div class="battery-ring-container">
+                            <svg width="80" height="80">
+                                <circle cx="40" cy="40" r="34" stroke="rgba(255,255,255,0.05)" stroke-width="6"
+                                    fill="transparent" />
+                                <circle id="dash-bat-ring" cx="40" cy="40" r="34" stroke="#10b981" stroke-width="6"
+                                    fill="transparent" stroke-dasharray="213.6" stroke-dashoffset="213.6"
+                                    stroke-linecap="round"
+                                    style="transition: stroke-dashoffset 0.5s ease; transform: rotate(-90deg); transform-origin: 50% 50%;" />
+                            </svg>
+                            <div class="battery-percent-text" id="dash-bat-text">--%</div>
+                        </div>
+                        <div class="power-details">
+                            <div class="telemetry-grid">
+                                <div class="telemetry-card">
+                                    <div class="label">Voltage</div>
+                                    <div class="value" id="dash-volt">-- V</div>
+                                    <div class="subtext">Nominal: 24V</div>
+                                </div>
+                                <div class="telemetry-card">
+                                    <div class="label">Current</div>
+                                    <div class="value" id="dash-curr">-- A</div>
+                                    <div class="subtext">Draw / Charge</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Control Mode Widget -->
+                <div class="dashboard-widget" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" onclick="cycleControlMode()" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.5)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+                    <div class="widget-title">
+                        Control Mode
+                    </div>
+                    <div
+                        style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; gap: 10px;">
+                        <div style="font-size: 1.5rem; color: #f59e0b; font-weight: bold; text-align: center;"
+                            id="dash-control-mode">
+                            Auto Priority
+                        </div>
+                        <div style="color: #64748b; font-size: 0.9rem; text-align: center;">
+                            Current Operation State
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Drivetrain Widget -->
+                <div class="dashboard-widget">
+                    <div class="widget-title">
+                        Drivetrain
+                    </div>
+                    <div class="telemetry-grid" style="margin-bottom: 12px;">
+                        <div class="telemetry-card">
+                            <div class="label">Left Wheel Speed</div>
+                            <div class="value" id="dash-speed-l">0.00 m/s</div>
+                        </div>
+                        <div class="telemetry-card">
+                            <div class="label">Right Wheel Speed</div>
+                            <div class="value" id="dash-speed-r">0.00 m/s</div>
+                        </div>
+                    </div>
+                    <div class="telemetry-grid">
+                        <div class="telemetry-card">
+                            <div class="label">Left State</div>
+                            <div class="value" style="font-size: 1.05rem;" id="dash-state-l">OFFLINE</div>
+                        </div>
+                        <div class="telemetry-card">
+                            <div class="label">Right State</div>
+                            <div class="value" style="font-size: 1.05rem;" id="dash-state-r">OFFLINE</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connections Widget -->
+                <div class="dashboard-widget">
+                    <div class="widget-title">
+                        Connections
+                    </div>
+                    <div class="status-indicators-grid">
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="conn-oakd"></div>
+                            <div class="status-info">
+                                <div class="name">OAK-D Camera</div>
+                                <div class="detail" id="conn-detail-oakd">Disconnected</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="conn-can"></div>
+                            <div class="status-info">
+                                <div class="name">CAN Network</div>
+                                <div class="detail" id="conn-detail-can">Disconnected</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="conn-ros2"></div>
+                            <div class="status-info">
+                                <div class="name">ROS2 Network</div>
+                                <div class="detail" id="conn-detail-ros2">Disconnected</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="conn-eth"></div>
+                            <div class="status-info">
+                                <div class="name">Ethernet</div>
+                                <div class="detail" id="conn-detail-eth">Disconnected</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="conn-wifi"></div>
+                            <div class="status-info">
+                                <div class="name">WiFi</div>
+                                <div class="detail" id="conn-detail-wifi">Disconnected</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="conn-bt"></div>
+                            <div class="status-info">
+                                <div class="name">Bluetooth</div>
+                                <div class="detail" id="conn-detail-bt">Disconnected</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="conn-touch"></div>
+                            <div class="status-info">
+                                <div class="name">Touchscreen</div>
+                                <div class="detail" id="conn-detail-touch">Disconnected</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CAN Network Widget -->
+                <div class="dashboard-widget">
+                    <div class="widget-title">
+                        CAN Network
+                    </div>
+                    <div class="status-indicators-grid">
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="cannet-proximity"></div>
+                            <div class="status-info">
+                                <div class="name">Proximity ESP32</div>
+                                <div class="detail" id="cannet-detail-proximity">Disconnected</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="cannet-top"></div>
+                            <div class="status-info">
+                                <div class="name">Top ESP32</div>
+                                <div class="detail" id="cannet-detail-top">Disconnected</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="cannet-core"></div>
+                            <div class="status-info">
+                                <div class="name">Core ESP32</div>
+                                <div class="detail" id="cannet-detail-core">Disconnected</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="cannet-nuc"></div>
+                            <div class="status-info">
+                                <div class="name">NUC</div>
+                                <div class="detail" id="cannet-detail-nuc">Disconnected</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="cannet-odesc-l"></div>
+                            <div class="status-info">
+                                <div class="name">ODESC 4.2 LEFT</div>
+                                <div class="detail" id="cannet-detail-odesc-l">Disconnected</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="cannet-odesc-r"></div>
+                            <div class="status-info">
+                                <div class="name">ODESC 4.2 RIGHT</div>
+                                <div class="detail" id="cannet-detail-odesc-r">Disconnected</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Pipelines Widget -->
+                <div class="dashboard-widget">
+                    <div class="widget-title">
+                        Pipelines
+                    </div>
+                    <div class="status-indicators-grid" style="grid-template-columns: repeat(1, 1fr); gap: 1vh;">
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="pipe-driving"></div>
+                            <div class="status-info">
+                                <div class="name">Driving Pipeline</div>
+                                <div class="detail" id="pipe-detail-driving">OFFLINE</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="pipe-nav2"></div>
+                            <div class="status-info">
+                                <div class="name">NAV2 Pipeline</div>
+                                <div class="detail" id="pipe-detail-nav2">OFFLINE</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="pipe-semantic"></div>
+                            <div class="status-info">
+                                <div class="name">Semantic Pipeline</div>
+                                <div class="detail" id="pipe-detail-semantic">OFFLINE</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="pipe-comms"></div>
+                            <div class="status-info">
+                                <div class="name">Communications Pipeline</div>
+                                <div class="detail" id="pipe-detail-comms">OFFLINE</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sensors Widget -->
+                <div class="dashboard-widget" style="grid-column: span 2;">
+                    <div class="widget-title">
+                        Sensors
+                    </div>
+                    <div class="status-indicators-grid" id="sensors-widget-grid"
+                        style="grid-template-columns: repeat(3, 1fr); gap: 2px;">
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="sens-imu"></div>
+                            <div class="status-info">
+                                <div class="name">IMU (OAK)</div>
+                                <div class="detail" id="sens-detail-imu">DISCONNECTED</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="sens-us-fl-3"></div>
+                            <div class="status-info">
+                                <div class="name">Proximity Front-Top-Left</div>
+                                <div class="detail" id="sens-detail-us-fl-3">DISCONNECTED</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="sens-us-fr-3"></div>
+                            <div class="status-info">
+                                <div class="name">Proximity Front-Top-Right</div>
+                                <div class="detail" id="sens-detail-us-fr-3">DISCONNECTED</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="sens-us-fl-2"></div>
+                            <div class="status-info">
+                                <div class="name">Proximity Front-Middle-Left</div>
+                                <div class="detail" id="sens-detail-us-fl-2">DISCONNECTED</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="sens-us-fr-2"></div>
+                            <div class="status-info">
+                                <div class="name">Proximity Front-Middle-Right</div>
+                                <div class="detail" id="sens-detail-us-fr-2">DISCONNECTED</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="sens-us-fl-1"></div>
+                            <div class="status-info">
+                                <div class="name">Proximity Front-Bottom-Left</div>
+                                <div class="detail" id="sens-detail-us-fl-1">DISCONNECTED</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="sens-us-fr-1"></div>
+                            <div class="status-info">
+                                <div class="name">Proximity Front-Bottom-Right</div>
+                                <div class="detail" id="sens-detail-us-fr-1">DISCONNECTED</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="sens-us-sl-3"></div>
+                            <div class="status-info">
+                                <div class="name">Proximity Left-Top</div>
+                                <div class="detail" id="sens-detail-us-sl-3">DISCONNECTED</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="sens-us-sl-1"></div>
+                            <div class="status-info">
+                                <div class="name">Proximity Left-Bottom</div>
+                                <div class="detail" id="sens-detail-us-sl-1">DISCONNECTED</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="sens-us-sr-3"></div>
+                            <div class="status-info">
+                                <div class="name">Proximity Right-Top</div>
+                                <div class="detail" id="sens-detail-us-sr-3">DISCONNECTED</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="sens-us-sr-1"></div>
+                            <div class="status-info">
+                                <div class="name">Proximity Right-Bottom</div>
+                                <div class="detail" id="sens-detail-us-sr-1">DISCONNECTED</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="sens-rfid"></div>
+                            <div class="status-info">
+                                <div class="name">RFID</div>
+                                <div class="detail" id="sens-detail-rfid">DISCONNECTED</div>
+                            </div>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot-large disconnected" id="sens-beam"></div>
+                            <div class="status-info">
+                                <div class="name">Drawer 1 Laser</div>
+                                <div class="detail" id="sens-detail-beam">DISCONNECTED</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1342,11 +2175,22 @@
             <!-- Left Column: Motor Status -->
             <div class="settings-card">
                 <h3>Motor Diagnostics & Calibration</h3>
-                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center;">
                     <button class="btn-primary" id="btn-calib-both" onclick="recalibrateBoth(this)">Calibrate
                         Both</button>
                     <button class="btn-primary" id="btn-reboot-both" onclick="rebootBoth(this)"
                         style="background: #dc2626; color: white; border: none;">Reboot Both</button>
+                    
+                    <!-- Both Motors State Toggle -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 1.2vh; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-left: auto;">
+                        <span style="margin-right: 5px;">IDLE</span>
+                        <label class="toggle-switch" style="transform: scale(0.7); margin: 0;">
+                            <input type="checkbox" id="toggle-state-both"
+                                onchange="setMotorStateBoth(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                        <span style="margin-left: 5px;">CL-VEL</span>
+                    </div>
                 </div>
 
                 <div class="motor-status-box">
@@ -1364,10 +2208,10 @@
                         <button class="btn-restart" id="btn-reboot-left" onclick="rebootMotor('left', this)"
                             style="background: #dc2626;">Reboot</button>
                         <div
-                            style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-top: 5px;">
+                            style="display: flex; align-items: center; justify-content: space-between; font-size: 1.2vh; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-top: 5px;">
                             <span>IDLE</span>
                             <label class="toggle-switch" style="transform: scale(0.7); margin: 0;">
-                                <input type="checkbox" id="toggle-state-left" checked
+                                <input type="checkbox" id="toggle-state-left"
                                     onchange="setMotorState('left', this.checked)">
                                 <span class="slider"></span>
                             </label>
@@ -1391,10 +2235,10 @@
                         <button class="btn-restart" id="btn-reboot-right" onclick="rebootMotor('right', this)"
                             style="background: #dc2626;">Reboot</button>
                         <div
-                            style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-top: 5px;">
+                            style="display: flex; align-items: center; justify-content: space-between; font-size: 1.2vh; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-top: 5px;">
                             <span>IDLE</span>
                             <label class="toggle-switch" style="transform: scale(0.7); margin: 0;">
-                                <input type="checkbox" id="toggle-state-right" checked
+                                <input type="checkbox" id="toggle-state-right"
                                     onchange="setMotorState('right', this.checked)">
                                 <span class="slider"></span>
                             </label>
@@ -1403,7 +2247,7 @@
                     </div>
                 </div>
 
-                <p style="color: #64748b; font-size: 0.85rem; margin-top: 20px;">
+                <p style="color: #64748b; font-size: 1.3vh; margin-top: 20px;">
                     Warning: Recalibrating while hospobot is on the ground may fail due to friction. Lift the wheels if
                     full index search is required.
                 </p>
@@ -1418,7 +2262,7 @@
                         Max Linear Speed Limit
                         <span class="setting-desc">Clamps the /cmd_vel maximum forward/backward speed (m/s)</span>
                     </div>
-                    <input type="number" class="number-input" id="cfg-max-linear" value="1.0" step="0.1">
+                    <input type="number" class="number-input" id="cfg-max-linear" value="0.43" step="0.1">
                 </div>
 
                 <div class="setting-row">
@@ -1426,7 +2270,10 @@
                         Max Angular Speed Limit
                         <span class="setting-desc">Clamps the /cmd_vel maximum turning speed (rad/s)</span>
                     </div>
-                    <input type="number" class="number-input" id="cfg-max-angular" value="2.0" step="0.1">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="range" id="max-ang-vel" min="0.1" max="1.05" step="0.05" value="0.46" oninput="document.getElementById('max-ang-val').innerText = this.value">
+                        <span id="max-ang-val" style="width: 30px;">0.46</span>
+                    </div>
                 </div>
 
                 <div class="setting-row">
@@ -1478,6 +2325,14 @@
     </div>
 
     <script>
+        // --- MAP CALIBRATION ---
+        // Tune these values to align the robot's physical coordinates with the image
+        // MAP_ORIGIN is the pixel offset from the center of the slam-map container
+        const MAP_SCALE_PX_PER_METER = 100.0; 
+        const MAP_ORIGIN_X_PX = 0;
+        const MAP_ORIGIN_Y_PX = 0;
+        const MAP_ROTATION_OFFSET_DEG = 0;
+
         // --- GLOBAL VARIABLES ---
         let pose = { x: 0, y: 0, theta: 0 };
         let goalPose = { x: 600, y: 0 };
@@ -1492,21 +2347,72 @@
             url: 'ws://' + window.location.hostname + ':9090'
         });
 
+        function updateIndicator(dotId, detailId, status, customText = null) {
+            const dot = document.getElementById(dotId);
+            const det = document.getElementById(detailId);
+            if (!dot || !det) return;
+
+            dot.classList.remove('connected', 'disconnected', 'stalled', 'candown');
+
+            let dotClass = 'disconnected';
+            let normStatus = status.toUpperCase();
+
+            switch (normStatus) {
+                case 'CONNECTED':
+                    dotClass = 'connected';
+                    break;
+                case 'DISCONNECTED':
+                    dotClass = 'disconnected';
+                    break;
+                case 'STALLED':
+                case 'STALLING':
+                    dotClass = 'stalled';
+                    normStatus = 'STALLING';
+                    break;
+                case 'CAN-DOWN':
+                    dotClass = 'candown';
+                    break;
+            }
+
+            dot.classList.add(dotClass);
+
+            if (dotId.startsWith('sens-')) {
+                det.innerText = normStatus;
+            } else {
+                det.innerText = customText ? customText : status;
+            }
+        }
+
+        function updateConnections(isConnected) {
+            const status = isConnected ? 'Connected' : 'Disconnected';
+            updateIndicator('conn-eth', 'conn-detail-eth', status);
+            updateIndicator('conn-bt', 'conn-detail-bt', status);
+            updateIndicator('conn-touch', 'conn-detail-touch', status);
+            updateIndicator('conn-ros2', 'conn-detail-ros2', status);
+            if (!isConnected) {
+                updateIndicator('conn-wifi', 'conn-detail-wifi', 'Disconnected');
+                updateIndicator('conn-oakd', 'conn-detail-oakd', 'Disconnected');
+            }
+        }
+
         ros.on('connection', function () {
             document.getElementById('ui-conn-text').innerText = 'Connected';
             document.getElementById('ui-conn-dot').classList.add('connected');
+            updateConnections(true);
         });
         ros.on('error', function (error) {
             document.getElementById('ui-conn-text').innerText = 'Error';
             document.getElementById('ui-conn-dot').classList.remove('connected');
+            updateConnections(false);
         });
         ros.on('close', function () {
             document.getElementById('ui-conn-text').innerText = 'Disconnected';
             document.getElementById('ui-conn-dot').classList.remove('connected');
+            updateConnections(false);
         });
 
         // ROS Publishers
-        const cmdVelPub = new ROSLIB.Topic({ ros: ros, name: '/cmd_vel_manual', messageType: 'geometry_msgs/Twist' });
+        const cmdVelPub = new ROSLIB.Topic({ ros: ros, name: '/cmd_vel_web', messageType: 'geometry_msgs/Twist' });
         const modePub = new ROSLIB.Topic({ ros: ros, name: '/control_mode', messageType: 'std_msgs/String' });
         const goalPub = new ROSLIB.Topic({ ros: ros, name: '/goal_pose', messageType: 'geometry_msgs/PoseStamped' });
         const calibLPub = new ROSLIB.Topic({ ros: ros, name: '/odesc_hardware/calibrate_left', messageType: 'std_msgs/msg/Empty' });
@@ -1536,6 +2442,14 @@
             if (pose.theta < 0) pose.theta += 360;
 
             updateEgoCentricView();
+
+            // Calculate wheel speeds (track_width = 0.4m)
+            let v_left = linVel - 0.2 * angVel;
+            let v_right = linVel + 0.2 * angVel;
+            const speedLEl = document.getElementById('dash-speed-l');
+            const speedREl = document.getElementById('dash-speed-r');
+            if (speedLEl) speedLEl.innerText = v_left.toFixed(2) + ' m/s';
+            if (speedREl) speedREl.innerText = v_right.toFixed(2) + ' m/s';
         });
 
         const AXIS_ERRORS = {
@@ -1582,23 +2496,48 @@
             try {
                 let data = JSON.parse(msg.data);
 
-                // Left motor
+                // Left motor — map Unknown to Disconnected
                 let lErrDecoded = decodeOdriveError(data.left.error);
-                document.getElementById('set-l-state').innerText = data.left.state;
+                const leftStateDisplay = (data.left.state === 'Unknown') ? 'Disconnected' : data.left.state;
+                document.getElementById('set-l-state').innerText = leftStateDisplay;
                 document.getElementById('set-l-volt').innerText = data.left.voltage + 'V';
                 document.getElementById('set-l-curr').innerText = data.left.current + 'A';
                 document.getElementById('set-l-err').innerText = lErrDecoded;
                 document.getElementById('set-l-err').className = lErrDecoded === "None" ? "ok" : "err";
-                document.getElementById('set-l-state').className = data.left.state === "Closed Loop" ? "ok" : "err";
+                document.getElementById('set-l-state').className = data.left.state.includes("Closed-Loop") ? "ok" : "err";
 
-                // Right motor
+                // Right motor — map Unknown to Disconnected
                 let rErrDecoded = decodeOdriveError(data.right.error);
-                document.getElementById('set-r-state').innerText = data.right.state;
+                const rightStateDisplay = (data.right.state === 'Unknown') ? 'Disconnected' : data.right.state;
+                document.getElementById('set-r-state').innerText = rightStateDisplay;
                 document.getElementById('set-r-volt').innerText = data.right.voltage + 'V';
                 document.getElementById('set-r-curr').innerText = data.right.current + 'A';
                 document.getElementById('set-r-err').innerText = rErrDecoded;
                 document.getElementById('set-r-err').className = rErrDecoded === "None" ? "ok" : "err";
-                document.getElementById('set-r-state').className = data.right.state === "Closed Loop" ? "ok" : "err";
+                document.getElementById('set-r-state').className = data.right.state.includes("Closed-Loop") ? "ok" : "err";
+
+                // Dashboard drivetrain widgets
+                const dashStateL = document.getElementById('dash-state-l');
+                const dashStateR = document.getElementById('dash-state-r');
+                if (dashStateL) {
+                    dashStateL.innerText = leftStateDisplay;
+                    dashStateL.style.color = data.left.state.includes("Closed-Loop") ? "#10b981" : (data.left.state === "Idle" ? "#f59e0b" : "#ef4444");
+                }
+                if (dashStateR) {
+                    dashStateR.innerText = rightStateDisplay;
+                    dashStateR.style.color = data.right.state.includes("Closed-Loop") ? "#10b981" : (data.right.state === "Idle" ? "#f59e0b" : "#ef4444");
+                }
+
+                // CAN Network ODESC indicators — Connected / Disconnected only
+                const knownOfflineStates = ['Unknown', 'No Heartbeat', 'Disconnected', 'OFFLINE', 'Heartbeat timeout'];
+                const isLeftConnected = !knownOfflineStates.includes(data.left.state);
+                const isRightConnected = !knownOfflineStates.includes(data.right.state);
+
+                updateIndicator('cannet-odesc-l', 'cannet-detail-odesc-l',
+                    isLeftConnected ? 'Connected' : 'Disconnected');
+                updateIndicator('cannet-odesc-r', 'cannet-detail-odesc-r',
+                    isRightConnected ? 'Connected' : 'Disconnected');
+
 
             } catch (e) { }
         });
@@ -1614,6 +2553,8 @@
 
                 // Process nodes dynamically
                 const activeNodes = (data.raw_nodes || []).map(n => n.replace(/^\//, ''));
+                window.latestActiveNodes = activeNodes;
+
                 networkEntities.filter(e => e.type === 'Node').forEach(entity => {
                     const cleanEntityName = entity.name.replace(/^\//, '');
                     const isOnline = activeNodes.includes(cleanEntityName);
@@ -1627,6 +2568,33 @@
                     const isOnline = names.some(n => activeTopics.includes(n));
                     updateNetworkItem(entity.id, isOnline ? 'FUNCTIONAL' : 'OFFLINE');
                 });
+
+                // Update Connections Widget from OS Checks
+                let os = data.os || {};
+                window.latestOsStatus = os;
+                const isRos2Online = activeNodes.includes('rosbridge_websocket');
+
+                updateIndicator('conn-oakd', 'conn-detail-oakd', os.oakd ? 'Connected' : 'Disconnected');
+                updateIndicator('conn-can', 'conn-detail-can', os.can ? 'Connected' : 'Disconnected');
+                updateIndicator('conn-ros2', 'conn-detail-ros2', isRos2Online ? 'Connected' : 'Disconnected');
+                updateIndicator('conn-eth', 'conn-detail-eth', os.eth ? 'Connected' : 'Disconnected');
+                updateIndicator('conn-wifi', 'conn-detail-wifi', os.wifi_ssid ? 'Connected' : 'Disconnected', os.wifi_ssid ? `${os.wifi_ssid} (${data.ping}ms)` : 'Disconnected');
+                updateIndicator('conn-bt', 'conn-detail-bt', os.bt ? 'Connected' : 'Disconnected');
+                // The Touch screen is inherently connected if they are touching the web interface locally, but assume connected for now
+                updateIndicator('conn-touch', 'conn-detail-touch', 'Connected');
+
+                // Update NUC CAN Network status
+                updateIndicator('cannet-nuc', 'cannet-detail-nuc', 'Connected');
+
+                // Update Pipelines
+                let pipes = data.pipelines || {};
+                updateIndicator('pipe-driving', 'pipe-detail-driving', pipes.driving ? 'Connected' : 'Disconnected', pipes.driving ? 'ACTIVE' : 'OFFLINE');
+                updateIndicator('pipe-nav2', 'pipe-detail-nav2', pipes.nav2 ? 'Connected' : 'Disconnected', pipes.nav2 ? 'ACTIVE' : 'OFFLINE');
+                updateIndicator('pipe-semantic', 'pipe-detail-semantic', pipes.semantic ? 'Connected' : 'Disconnected', pipes.semantic ? 'ACTIVE' : 'OFFLINE');
+                updateIndicator('pipe-comms', 'pipe-detail-comms', pipes.comms ? 'Connected' : 'Disconnected', pipes.comms ? 'ACTIVE' : 'OFFLINE');
+
+                // Check timeouts and update sensors
+                checkSensorTimeouts();
             } catch (e) { }
 
             // Heartbeat: Reset all to offline if no message received for 3 seconds
@@ -1637,7 +2605,75 @@
                 networkEntities.forEach(entity => {
                     updateNetworkItem(entity.id, 'OFFLINE');
                 });
+
+                // Reset dashboard indicators
+                updateConnections(false);
+
+                // Reset ESPs and devices to Disconnected
+                updateIndicator('cannet-proximity', 'cannet-detail-proximity', 'Disconnected');
+                updateIndicator('cannet-top', 'cannet-detail-top', 'Disconnected');
+                updateIndicator('cannet-core', 'cannet-detail-core', 'Disconnected');
+                updateIndicator('cannet-nuc', 'cannet-detail-nuc', 'Disconnected');
+                updateIndicator('cannet-odesc-l', 'cannet-detail-odesc-l', 'Disconnected');
+                updateIndicator('cannet-odesc-r', 'cannet-detail-odesc-r', 'Disconnected');
+
+                // Reset CAN sensors to Disconnected
+                sensorElements.forEach(s => {
+                    let id = s.replace('sensor-', 'us-');
+                    updateIndicator(`sens-${id}`, `sens-detail-${id}`, 'Disconnected');
+                });
+                updateIndicator('sens-imu', 'sens-detail-imu', 'Disconnected');
+                updateIndicator('sens-rfid', 'sens-detail-rfid', 'Disconnected');
+                updateIndicator('sens-beam', 'sens-detail-beam', 'Disconnected');
+
+                const speedLEl = document.getElementById('dash-speed-l');
+                const speedREl = document.getElementById('dash-speed-r');
+                if (speedLEl) speedLEl.innerText = '0.00 m/s';
+                if (speedREl) speedREl.innerText = '0.00 m/s';
             }, 3000);
+        });
+
+        const voltSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/sensors/bus_voltage',
+            messageType: 'std_msgs/Float32'
+        });
+        voltSub.subscribe(function (msg) {
+            try {
+                let volt = msg.data;
+                document.getElementById('dash-volt').innerText = volt.toFixed(2) + ' V';
+
+                // State of charge mapping (21.0V to 26.2V -> 0% to 100%)
+                let soc = Math.round(((volt - 21.0) / (26.2 - 21.0)) * 100);
+                soc = Math.max(0, Math.min(100, soc));
+                document.getElementById('dash-bat-text').innerText = soc + '%';
+
+                // Update battery circle stroke-dashoffset: max circumference is 213.6
+                let offset = 213.6 - (213.6 * soc) / 100;
+                const ring = document.getElementById('dash-bat-ring');
+                if (ring) {
+                    ring.style.strokeDashoffset = offset;
+                    if (soc < 20) {
+                        ring.setAttribute('stroke', '#ef4444');
+                    } else if (soc < 50) {
+                        ring.setAttribute('stroke', '#f59e0b');
+                    } else {
+                        ring.setAttribute('stroke', '#10b981');
+                    }
+                }
+            } catch (e) { }
+        });
+
+        const currSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/sensors/bus_current',
+            messageType: 'std_msgs/Float32'
+        });
+        currSub.subscribe(function (msg) {
+            try {
+                let curr = msg.data;
+                document.getElementById('dash-curr').innerText = curr.toFixed(2) + ' A';
+            } catch (e) { }
         });
 
         function updateNetworkItem(id, status) {
@@ -1676,19 +2712,19 @@
             { id: 'node_diag', name: '/diagnostics_node', type: 'Node', shape: 'shape-node', x: 50, y: 50 },
             { id: 'node_camera', name: '/oakd_yolo_node', type: 'Node', shape: 'shape-node', x: 450, y: 50 },
             { id: 'node_bridge', name: '/rosbridge_websocket', type: 'Node', shape: 'shape-node', x: 850, y: 50 },
-            
+
             { id: 'topic_pts_rgb', name: '/oakd/points & image', type: 'Topic', shape: 'shape-rect', x: 300, y: 160 },
             { id: 'topic_dets', name: '/oakd/detections', type: 'Topic', shape: 'shape-rect', x: 600, y: 160 },
-            
+
             { id: 'node_proj', name: '/semantic_projection_node', type: 'Node', shape: 'shape-node', x: 450, y: 270 },
             { id: 'topic_raw_obj', name: '/semantic/raw_objects', type: 'Topic', shape: 'shape-rect', x: 450, y: 380 },
             { id: 'node_tracker', name: '/semantic_tracker_node', type: 'Node', shape: 'shape-node', x: 450, y: 490 },
             { id: 'topic_track_obj', name: '/semantic/tracked_objects', type: 'Topic', shape: 'shape-rect', x: 450, y: 600 },
             { id: 'node_cost_bridge', name: '/semantic_costmap_bridge', type: 'Node', shape: 'shape-node', x: 450, y: 710 },
-            
+
             { id: 'topic_sem_map', name: '/semantic/obstacle_cloud', type: 'Topic', shape: 'shape-rect', x: 300, y: 820 },
             { id: 'action_nav', name: '/navigate_to_pose', type: 'Action', shape: 'shape-rect', x: 600, y: 820 },
-            
+
             { id: 'node_nav', name: '/nav2_manager_node', type: 'Node', shape: 'shape-node', x: 450, y: 930 },
             { id: 'topic_cmd', name: '/cmd_vel', type: 'Topic', shape: 'shape-rect', x: 450, y: 1040 },
             { id: 'node_mux', name: '/cmd_vel_mux', type: 'Node', shape: 'shape-node', x: 450, y: 1150 },
@@ -1761,16 +2797,27 @@
         function updateEgoCentricView() {
             if (!document.getElementById('view-status').classList.contains('active')) return;
 
-            mapWrapper.style.transform = `rotate(${pose.theta - 90}deg)`;
-            slamMap.style.transform = `translate(${-pose.x}px, ${pose.y}px)`;
+            // Map is static, robot moves and rotates
+            // mapWrapper.style.transform = `rotate(${pose.theta - 90}deg)`;
+            // slamMap.style.transform = `translate(${-pose.x}px, ${pose.y}px)`;
+
+            const robotModel = document.getElementById('robot-model');
+            if (robotModel) {
+                const poseXMeters = pose.x / 100.0;
+                const poseYMeters = pose.y / 100.0;
+                
+                // Calculate pixel coordinates using the calibration constants
+                const pixelX = MAP_ORIGIN_X_PX + (poseXMeters * MAP_SCALE_PX_PER_METER);
+                // Invert Y because CSS screen coordinates go down, while ROS goes up
+                const pixelY = MAP_ORIGIN_Y_PX - (poseYMeters * MAP_SCALE_PX_PER_METER);
+                const displayTheta = (90 - pose.theta) + MAP_ROTATION_OFFSET_DEG;
+
+                robotModel.style.transform = `translate(${pixelX}px, ${pixelY}px) rotate(${displayTheta}deg) scale(0.25)`;
+            }
 
             document.getElementById('status-current-pose').innerText = `X: ${(pose.x / 100).toFixed(2)} | Y: ${(pose.y / 100).toFixed(2)} | θ: ${Math.round(pose.theta)}°`;
             document.getElementById('status-goal-pose').innerText = `X: ${(goalPose.x / 100).toFixed(2)} | Y: ${(goalPose.y / 100).toFixed(2)}`;
             document.getElementById('status-nav-state').innerText = navState;
-            document.getElementById('rpm-l').innerText = (linVel * 40).toFixed(0); // Approximate
-            document.getElementById('rpm-r').innerText = (linVel * 40).toFixed(0);
-            document.getElementById('vel-linear').innerText = linVel.toFixed(2);
-            document.getElementById('vel-angular').innerText = angVel.toFixed(2);
 
             drawPathOverlay();
         }
@@ -1855,59 +2902,44 @@
             document.getElementById('status-dimmer').classList.toggle('active');
         }
 
-        let modeConfirmState = { manual: false, auto: false };
-        let modeTimeouts = {};
+        let currentControlMode = 'auto_priority';
 
         function switchControlMode(mode) {
-            let btnId = mode === 'manual' ? 'btn-mode-manual' : 'btn-mode-auto';
-            let originalText = mode === 'manual' ? 'Manual Control' : 'Autonomous Mode';
+            currentControlMode = mode;
+            const modes = ['auto_priority', 'web', 'ps5', 'nav'];
+            modes.forEach(m => {
+                const btn = document.getElementById(`btn-mode-${m}`);
+                if (btn) {
+                    if (m === mode) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                }
+            });
 
-            let currentMode = document.getElementById('btn-mode-manual').classList.contains('active') ? 'manual' : 'auto';
-            if (currentMode === mode) return;
-
-            if (!modeConfirmState[mode]) {
-                modeConfirmState[mode] = true;
-                let btn = document.getElementById(btnId);
-                btn.innerText = "Are you sure?";
-                btn.style.background = "#b91c1c";
-                btn.style.color = "white";
-
-                modeTimeouts[mode] = setTimeout(() => {
-                    modeConfirmState[mode] = false;
-                    btn.innerText = originalText;
-                    btn.style.background = "";
-                    btn.style.color = "";
-                }, 4000);
-            } else {
-                clearTimeout(modeTimeouts[mode]);
-                modeConfirmState[mode] = false;
-
-                let btn = document.getElementById(btnId);
-                btn.innerText = originalText;
-                btn.style.background = "";
-                btn.style.color = "";
-
-                document.getElementById('btn-mode-manual').classList.toggle('active', mode === 'manual');
-                document.getElementById('btn-mode-auto').classList.toggle('active', mode === 'auto');
-                document.getElementById('panel-manual').classList.toggle('active', mode === 'manual');
-                document.getElementById('panel-auto').classList.toggle('active', mode === 'auto');
-
-                let modeMsg = new ROSLIB.Message({ data: mode });
-                modePub.publish(modeMsg);
-
-                let otherMode = mode === 'manual' ? 'auto' : 'manual';
-                let otherBtnId = mode === 'manual' ? 'btn-mode-auto' : 'btn-mode-manual';
-                let otherOriginalText = mode === 'manual' ? 'Autonomous Mode' : 'Manual Control';
-                clearTimeout(modeTimeouts[otherMode]);
-                modeConfirmState[otherMode] = false;
-                let otherBtn = document.getElementById(otherBtnId);
-                otherBtn.innerText = otherOriginalText;
-                otherBtn.style.background = "";
-                otherBtn.style.color = "";
+            // Update Dashboard Text
+            const dashModeEl = document.getElementById('dash-control-mode');
+            if (dashModeEl) {
+                const modeNames = {
+                    'auto_priority': 'Auto Priority',
+                    'web': 'Web Only',
+                    'ps5': 'PS5 Only',
+                    'nav': 'Nav Only'
+                };
+                dashModeEl.innerText = modeNames[mode] || mode;
             }
+
+            let modeMsg = new ROSLIB.Message({ data: mode });
+            modePub.publish(modeMsg);
+        }
+
+        function cycleControlMode() {
+            const modes = ['auto_priority', 'web', 'ps5', 'nav'];
+            let idx = modes.indexOf(currentControlMode);
+            idx = (idx + 1) % modes.length;
+            switchControlMode(modes[idx]);
         }
 
         let activeKeys = { w: false, a: false, s: false, d: false };
+        let manualPublishInterval = null;
 
         function handleManualInput(key, isDown) {
             if (activeKeys[key] === isDown) return;
@@ -1921,19 +2953,51 @@
 
             let linear = 0;
             let angular = 0;
+            
+            const maxLin = parseFloat(document.getElementById('cfg-max-linear')?.value || 0.5);
+            const maxAng = parseFloat(document.getElementById('max-ang-vel')?.value || 1.05);
 
-            // Simple teleop mixing
-            if (activeKeys['w']) linear += 0.5;
-            if (activeKeys['s']) linear -= 0.5;
-            if (activeKeys['a']) angular += 0.5;
-            if (activeKeys['d']) angular -= 0.5;
+            if (activeKeys['w']) linear += maxLin;
+            if (activeKeys['s']) linear -= maxLin;
+            if (activeKeys['a']) angular += maxAng;
+            if (activeKeys['d']) angular -= maxAng;
+
+            // Ensure we only take control if the correct tabs are open
+            const isActive = document.getElementById('view-status').classList.contains('active') && 
+                             document.getElementById('panel-manual').classList.contains('active');
+
+            if (!isActive) {
+                linear = 0;
+                angular = 0;
+                activeKeys = { w: false, a: false, s: false, d: false };
+            }
 
             setManualVel(linear, angular);
+
+            if (manualPublishInterval) {
+                clearInterval(manualPublishInterval);
+                manualPublishInterval = null;
+            }
+            
+            if (linear !== 0 || angular !== 0) {
+                manualPublishInterval = setInterval(() => {
+                    const stillActive = document.getElementById('view-status').classList.contains('active') && 
+                                        document.getElementById('panel-manual').classList.contains('active');
+                    if (stillActive) {
+                        setManualVel(linear, angular);
+                    } else {
+                        clearInterval(manualPublishInterval);
+                        manualPublishInterval = null;
+                        activeKeys = { w: false, a: false, s: false, d: false };
+                    }
+                }, 100);
+            }
         }
 
         document.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
             if (!['w', 'a', 's', 'd'].includes(key)) return;
+
 
             if (!document.getElementById('view-status').classList.contains('active')) return;
             if (!document.getElementById('panel-manual').classList.contains('active')) return;
@@ -1959,6 +3023,44 @@
                 angular: { x: 0.0, y: 0.0, z: angular }
             });
             cmdVelPub.publish(twist);
+        }
+
+        function navigateToRoom(roomName) {
+            const roomEls = document.querySelectorAll('.room-btn');
+            let roomEl = null;
+            for (let el of roomEls) {
+                if (el.innerHTML.includes(roomName)) {
+                    roomEl = el;
+                    break;
+                }
+            }
+            
+            if (!roomEl) return;
+            
+            const cssLeft = parseInt(roomEl.style.left);
+            const cssTop = parseInt(roomEl.style.top);
+            
+            const targetX = (cssLeft - 2000) / 100;
+            const targetY = (2000 - cssTop) / 100;
+            
+            console.log(`Navigating to ${roomName} at map coords (${targetX}, ${targetY})`);
+            
+            let rad = 0 * (Math.PI / 180);
+            let qz = Math.sin(rad / 2);
+            let qw = Math.cos(rad / 2);
+
+            let poseMsg = new ROSLIB.Message({
+                header: { frame_id: 'map' },
+                pose: {
+                    position: { x: targetX, y: targetY, z: 0.0 },
+                    orientation: { x: 0.0, y: 0.0, z: qz, w: qw }
+                }
+            });
+            goalPub.publish(poseMsg);
+
+            goalPose = { x: targetX * 100, y: targetY * 100 };
+            navState = 'NAVIGATING';
+            updateEgoCentricView();
         }
 
         function dispatchManualGoal() {
@@ -2086,6 +3188,13 @@
             pub.publish(new ROSLIB.Message({ data: stateStr }));
         }
 
+        function setMotorStateBoth(isClosedLoop) {
+            document.getElementById('toggle-state-left').checked = isClosedLoop;
+            document.getElementById('toggle-state-right').checked = isClosedLoop;
+            setMotorState('left', isClosedLoop);
+            setMotorState('right', isClosedLoop);
+        }
+
         function recalibrateBoth(btnEl) {
             performAction('calib', 'both', btnEl, "Calibrate Both", () => {
                 calibLPub.publish(new ROSLIB.Message({}));
@@ -2104,7 +3213,7 @@
             let invL = document.getElementById('cfg-inv-left').checked;
             let invR = document.getElementById('cfg-inv-right').checked;
             let maxLin = parseFloat(document.getElementById('cfg-max-linear').value);
-            let maxAng = parseFloat(document.getElementById('cfg-max-angular').value);
+            let maxAng = parseFloat(document.getElementById('max-ang-vel').value);
 
             let settingsData = {
                 invert_left: invL,
@@ -2117,26 +3226,259 @@
             alert("Settings applied successfully! Parameters sent to backend nodes.");
         }
 
+        // --- PROXIMITY SENSORS LOGIC ---
+        const ultrasonicSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/sensors/ultrasonics',
+            messageType: 'std_msgs/Float32MultiArray'
+        });
+
+        const sensorElements = [
+            'sensor-fl-3', // Index 0: Front Left Box 3 (Top)
+            'sensor-fr-3', // Index 1: Front Right Box 3 (Top)
+            'sensor-fl-2', // Index 2: Front Left Box 2 (Middle)
+            'sensor-fr-2', // Index 3: Front Right Box 2 (Middle)
+            'sensor-fl-1', // Index 4: Front Left Box 1 (Bottom)
+            'sensor-fr-1', // Index 5: Front Right Box 1 (Bottom)
+            'sensor-sl-3', // Index 6: Side Left Box 3 (Top)
+            'sensor-sl-1', // Index 7: Side Left Box 1 (Bottom)
+            'sensor-sr-3', // Index 8: Side Right Box 3 (Top)
+            'sensor-sr-1', // Index 9: Side Right Box 1 (Bottom)
+        ];
+
+        window.espStatus = {
+            'ESP32-A': 'Disconnected',
+            'ESP32-B': 'Disconnected',
+            'ESP32-C': 'Disconnected'
+        };
+
+        let lastSensorSeen = {
+            imu: 0,
+            ultrasonics: 0,
+            rfid: 0,
+            beam_break: 0
+        };
+
+        let lastSensorValues = {};
+        let lastSensorValueChange = {};
+
+        function checkSensorTimeouts() {
+            const now = Date.now();
+            const timeout = 3000;
+
+            if (now - lastSensorSeen.imu > timeout) {
+                updateIndicator('sens-imu', 'sens-detail-imu', 'Disconnected');
+            }
+
+            const activeNodes = window.latestActiveNodes || [];
+            const isCanOnline = activeNodes.includes('system_can_bridge');
+
+            if (!isCanOnline) {
+                updateIndicator('conn-can', 'conn-detail-can', 'CAN-Down');
+                updateIndicator('cannet-proximity', 'cannet-detail-proximity', 'CAN-Down');
+                updateIndicator('cannet-top', 'cannet-detail-top', 'CAN-Down');
+                updateIndicator('cannet-core', 'cannet-detail-core', 'CAN-Down');
+                updateIndicator('cannet-odesc-l', 'cannet-detail-odesc-l', 'CAN-Down');
+                updateIndicator('cannet-odesc-r', 'cannet-detail-odesc-r', 'CAN-Down');
+
+                sensorElements.forEach(s => {
+                    let id = s.replace('sensor-', 'us-');
+                    updateIndicator(`sens-${id}`, `sens-detail-${id}`, 'CAN-Down');
+                });
+                updateIndicator('sens-rfid', 'sens-detail-rfid', 'CAN-Down');
+                updateIndicator('sens-beam', 'sens-detail-beam', 'CAN-Down');
+            } else {
+                const latestOs = window.latestOsStatus || {};
+                updateIndicator('conn-can', 'conn-detail-can', latestOs.can ? 'Connected' : 'Disconnected');
+
+                // ESP32-A (Proximity)
+                const espAStatus = window.espStatus['ESP32-A'];
+                if (espAStatus === 'Connected') {
+                    updateIndicator('cannet-proximity', 'cannet-detail-proximity', 'Connected');
+                    if (now - lastSensorSeen.ultrasonics > timeout) {
+                        sensorElements.forEach(s => {
+                            let id = s.replace('sensor-', 'us-');
+                            updateIndicator(`sens-${id}`, `sens-detail-${id}`, 'Stalled');
+                        });
+                    }
+                } else {
+                    updateIndicator('cannet-proximity', 'cannet-detail-proximity', 'Disconnected');
+                    sensorElements.forEach(s => {
+                        let id = s.replace('sensor-', 'us-');
+                        updateIndicator(`sens-${id}`, `sens-detail-${id}`, 'Disconnected');
+                    });
+                }
+
+                // ESP32-B (Top)
+                const espBStatus = window.espStatus['ESP32-B'];
+                if (espBStatus === 'Connected') {
+                    updateIndicator('cannet-top', 'cannet-detail-top', 'Connected');
+                    if (now - lastSensorSeen.rfid > timeout) {
+                        updateIndicator('sens-rfid', 'sens-detail-rfid', 'Disconnected');
+                    }
+                    if (now - lastSensorSeen.beam_break > timeout) {
+                        updateIndicator('sens-beam', 'sens-detail-beam', 'Disconnected');
+                    }
+                } else {
+                    updateIndicator('cannet-top', 'cannet-detail-top', 'Disconnected');
+                    updateIndicator('sens-rfid', 'sens-detail-rfid', 'Disconnected');
+                    updateIndicator('sens-beam', 'sens-detail-beam', 'Disconnected');
+                }
+
+                // ESP32-C (Core)
+                const espCStatus = window.espStatus['ESP32-C'];
+                updateIndicator('cannet-core', 'cannet-detail-core', espCStatus === 'Connected' ? 'Connected' : 'Disconnected');
+            }
+        }
+
+        ultrasonicSub.subscribe(function (msg) {
+            if (msg.data && msg.data.length >= 10) {
+                const now = Date.now();
+                lastSensorSeen.ultrasonics = now;
+                for (let i = 0; i < 10; i++) {
+                    let distance = msg.data[i];
+                    updateSensorVisual(sensorElements[i], distance);
+
+                    let s = sensorElements[i];
+                    let id = s.replace('sensor-', 'us-');
+
+                    let lastVal = lastSensorValues[s];
+                    if (lastVal !== undefined && Math.abs(lastVal - distance) < 0.0001) {
+                        if (now - (lastSensorValueChange[s] || now) > 10000) {
+                            updateIndicator(`sens-${id}`, `sens-detail-${id}`, 'Stalled', `${distance.toFixed(2)}m`);
+                        } else {
+                            updateIndicator(`sens-${id}`, `sens-detail-${id}`, 'Connected', `${distance.toFixed(2)}m`);
+                        }
+                    } else {
+                        lastSensorValues[s] = distance;
+                        lastSensorValueChange[s] = now;
+                        updateIndicator(`sens-${id}`, `sens-detail-${id}`, 'Connected', `${distance.toFixed(2)}m`);
+                    }
+                }
+            }
+        });
+
+        const diagArraySub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/diagnostics',
+            messageType: 'diagnostic_msgs/DiagnosticArray'
+        });
+        diagArraySub.subscribe(function (msg) {
+            try {
+                msg.status.forEach(status => {
+                    let name = status.name;
+                    let isOk = (status.level === 0);
+                    let isWarn = (status.level === 1);
+
+                    if (name === 'ESP32-A' || name === 'ESP32-B' || name === 'ESP32-C') {
+                        window.espStatus[name] = isOk ? 'Connected' : 'Disconnected';
+                    } else if (name === 'ODrive-L' || name === 'ODrive-R') {
+                        const dotId = name === 'ODrive-L' ? 'cannet-odesc-l' : 'cannet-odesc-r';
+                        const detailId = name === 'ODrive-L' ? 'cannet-detail-odesc-l' : 'cannet-detail-odesc-r';
+                        updateIndicator(dotId, detailId, isOk ? 'Connected' : 'Disconnected');
+                    }
+                });
+            } catch (e) { }
+        });
+
+
+        const imuSub = new ROSLIB.Topic({ ros: ros, name: '/imu/data', messageType: 'sensor_msgs/Imu' });
+        imuSub.subscribe(function (msg) {
+            lastSensorSeen.imu = Date.now();
+            updateIndicator('sens-imu', 'sens-detail-imu', 'Connected');
+        });
+
+        const rfidSub = new ROSLIB.Topic({ ros: ros, name: '/sensors/rfid', messageType: 'std_msgs/UInt32' });
+        rfidSub.subscribe(function (msg) {
+            lastSensorSeen.rfid = Date.now();
+            updateIndicator('sens-rfid', 'sens-detail-rfid', 'Connected', `UID: ${msg.data}`);
+        });
+
+        const beamSub = new ROSLIB.Topic({ ros: ros, name: '/sensors/beam_break', messageType: 'std_msgs/Bool' });
+        beamSub.subscribe(function (msg) {
+            lastSensorSeen.beam_break = Date.now();
+            updateIndicator('sens-beam', 'sens-detail-beam', 'Connected', msg.data ? 'Broken' : 'Clear');
+        });
+
+        function updateSensorVisual(elementId, distance) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+
+            const dot = el.querySelector('.sensor-dot');
+            const val = el.querySelector('.sensor-val');
+
+            const arcInner = el.querySelector('.arc-inner');
+            const arcMiddle = el.querySelector('.arc-middle');
+            const arcOuter = el.querySelector('.arc-outer');
+
+            const resetArcs = () => {
+                const offColor = 'rgba(255, 255, 255, 0.2)';
+                if (arcInner) { arcInner.style.stroke = offColor; arcInner.style.filter = 'none'; }
+                if (arcMiddle) { arcMiddle.style.stroke = offColor; arcMiddle.style.filter = 'none'; }
+                if (arcOuter) { arcOuter.style.stroke = offColor; arcOuter.style.filter = 'none'; }
+            };
+
+            if (distance === undefined || distance < 0) {
+                // Offline / No data
+                dot.style.backgroundColor = '#64748b';
+                dot.style.boxShadow = '0 0 5px #64748b';
+                val.innerText = '--';
+                resetArcs();
+                return;
+            }
+
+            // Convert to string representation
+            val.innerText = distance.toFixed(2) + 'm';
+            resetArcs();
+
+            // Determine color and active arcs based on proximity threat level
+            let color = '#10b981'; // Green
+            let glowColor = 'rgba(16, 185, 129, 0.5)';
+
+            if (distance < 0.5) {
+                color = '#ef4444'; // Red
+                glowColor = 'rgba(239, 68, 68, 0.6)';
+
+                // Red - 1 arc lit (Extreme proximity / Danger)
+                if (arcInner) { arcInner.style.stroke = color; arcInner.style.filter = `drop-shadow(0 0 3px ${glowColor})`; }
+            } else if (distance < 1.5) {
+                color = '#f59e0b'; // Yellow
+                glowColor = 'rgba(245, 158, 11, 0.5)';
+
+                // Yellow - 2 arcs lit (Moderate proximity / Warning)
+                if (arcInner) { arcInner.style.stroke = color; arcInner.style.filter = `drop-shadow(0 0 3px ${glowColor})`; }
+                if (arcMiddle) { arcMiddle.style.stroke = color; arcMiddle.style.filter = `drop-shadow(0 0 4px ${glowColor})`; }
+            } else {
+                color = '#10b981'; // Green
+                glowColor = 'rgba(16, 185, 129, 0.4)';
+
+                // Green - 3 arcs lit (Safe / Far)
+                if (arcInner) { arcInner.style.stroke = color; arcInner.style.filter = `drop-shadow(0 0 3px ${glowColor})`; }
+                if (arcMiddle) { arcMiddle.style.stroke = color; arcMiddle.style.filter = `drop-shadow(0 0 4px ${glowColor})`; }
+                if (arcOuter) { arcOuter.style.stroke = color; arcOuter.style.filter = `drop-shadow(0 0 5px ${glowColor})`; }
+            }
+
+            dot.style.backgroundColor = color;
+            dot.style.boxShadow = `0 0 10px ${color}`;
+        }
+
         // --- SEMANTIC DEBUG LOGIC ---
         const semanticSub = new ROSLIB.Topic({
             ros: ros,
             name: '/semantic/tracked_objects',
-            messageType: 'hospobot_interfaces/msg/SemanticObjectArray'
+            messageType: 'hospobot_interfaces/SemanticObjectArray'
         });
 
         semanticSub.subscribe(function (msg) {
             if (!document.getElementById('view-semantic').classList.contains('active')) return;
 
-            const consoleEl = document.getElementById('semantic-console');
-            consoleEl.innerText = "> Received at " + new Date().toISOString() + "\n" + JSON.stringify(msg, null, 2);
-            consoleEl.scrollTop = consoleEl.scrollHeight;
-
             const container = document.getElementById('semantic-cards-container');
-            if (!msg.objects || msg.objects.length === 0) {
+            const validObjects = msg.objects ? msg.objects.filter(obj => !obj.class_name.toUpperCase().includes('UNKNOWN')) : [];
+            if (validObjects.length === 0) {
                 container.innerHTML = '<p style="color: #64748b; text-align: center; margin-top: 40px;">No objects tracked currently.</p>';
             } else {
                 let html = '';
-                msg.objects.forEach(obj => {
+                validObjects.forEach(obj => {
                     const isLowConf = obj.confidence < 0.6;
                     html += `
                         <div class="semantic-card ${isLowConf ? 'low-conf' : ''}">
@@ -2186,11 +3528,25 @@
             ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 20); ctx.stroke();
 
             // Draw objects
-            if (msg.objects) {
-                msg.objects.forEach(obj => {
-                    // Robot is at 0,0 facing +x. In 2D radar, +x is forward (up), +y is left (left)
-                    const px = cx - (obj.position.y * scale);
-                    const py = cy - (obj.position.x * scale);
+            // Only HUMANs should be shown on the Live Radar (not FACES or UNKNOWN)
+            const validRadarObjects = msg.objects ? msg.objects.filter(obj => obj.class_name.toUpperCase() === 'HUMAN') : [];
+            if (validRadarObjects.length > 0) {
+                validRadarObjects.forEach(obj => {
+                    // Convert from Odom frame (world) to Base Link frame (robot local)
+                    const robotX = (typeof pose !== 'undefined' && pose.x) ? pose.x / 100.0 : 0.0;
+                    const robotY = (typeof pose !== 'undefined' && pose.y) ? pose.y / 100.0 : 0.0;
+                    const robotYaw = (typeof pose !== 'undefined' && pose.theta) ? pose.theta * Math.PI / 180.0 : 0.0;
+
+                    const dx = obj.position.x - robotX;
+                    const dy = obj.position.y - robotY;
+
+                    const rx = dx * Math.cos(robotYaw) + dy * Math.sin(robotYaw);
+                    const ry = -dx * Math.sin(robotYaw) + dy * Math.cos(robotYaw);
+
+                    // Robot is at cx,cy facing UP. In base_link, +x is forward, +y is left.
+                    // Canvas: UP is -Y, LEFT is -X.
+                    const px = cx - (ry * scale);
+                    const py = cy - (rx * scale);
 
                     ctx.fillStyle = obj.confidence < 0.6 ? '#f59e0b' : '#10b981';
                     ctx.beginPath();
@@ -2215,6 +3571,41 @@
                 });
             }
         });
+
+        // --- LIVE CAMERA FEED LOGIC ---
+        const cameraFeedSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/oakd/rgb/image_rect/compressed',
+            messageType: 'sensor_msgs/CompressedImage'
+        });
+
+        cameraFeedSub.subscribe(function (msg) {
+            if (!document.getElementById('view-semantic').classList.contains('active')) return;
+            const img = document.getElementById('live-camera-feed');
+            if (img) {
+                let base64String = "";
+                if (typeof msg.data === 'string') {
+                    base64String = msg.data;
+                } else if (Array.isArray(msg.data) || msg.data instanceof Uint8Array) {
+                    // Convert byte array to base64
+                    const bytes = new Uint8Array(msg.data);
+                    let binary = '';
+                    for (let i = 0; i < bytes.byteLength; i++) {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+                    base64String = window.btoa(binary);
+                } else {
+                    console.warn("Unknown camera feed data format", msg.data);
+                    return;
+                }
+                img.src = "data:image/jpeg;base64," + base64String;
+            }
+        });
+
+        // Enable panning for the static map
+        setTimeout(() => {
+            makeDraggable(document.getElementById('slam-map'));
+        }, 1000);
     </script>
 </body>
 

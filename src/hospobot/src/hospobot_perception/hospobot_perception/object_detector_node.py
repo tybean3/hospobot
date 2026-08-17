@@ -154,12 +154,12 @@ class ObjectDetectorNode(Node):
         detections = []
         # Process HOG detections
         for i, (box, weight) in enumerate(zip(boxes, weights)):
-            if weight < 0.3: continue
+            if weight < 0.9: continue
             detections.append({'box': box, 'is_face': False, 'type': 'Human'})
             
         # Fallback to Face if no full humans
         if len(detections) == 0:
-            faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
+            faces = self.face_cascade.detectMultiScale(gray, 1.1, 6)
             for i, face in enumerate(faces):
                 detections.append({'box': face, 'is_face': True, 'type': 'Face'})
         
@@ -177,7 +177,7 @@ class ObjectDetectorNode(Node):
                 self.get_logger().info(f"Det {i} match: {label} (score: {score:.3f})")
             
             # Use a slightly lower threshold for better recall
-            final_label = label.upper() if score > 0.35 else "UNKNOWN"
+            final_label = label.upper() if score > 0.35 else det['type'].upper()
             
             # Output Detection2D
             d2d = Detection2D()

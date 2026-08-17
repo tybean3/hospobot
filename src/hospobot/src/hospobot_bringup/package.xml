@@ -10,6 +10,9 @@
   <depend>hospobot_description</depend>
   <depend>odesc_hardware</depend>
   <depend>nav2_bringup</depend>
+  <exec_depend>hospobot_can_bridge</exec_depend>
+  <exec_depend>rtabmap_ros</exec_depend>
+  <exec_depend>rtabmap_odom</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

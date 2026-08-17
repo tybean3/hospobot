@@ -20,10 +20,24 @@ class TrackedObject:
         self.decay_time = 1.5 # seconds
 
     def update(self, x, y, z, dt):
-        alpha = 0.6 # Simple smoothing factor
-        self.vx = (x - self.x) / dt * alpha + self.vx * (1 - alpha)
-        self.vy = (y - self.y) / dt * alpha + self.vy * (1 - alpha)
-        self.vz = (z - self.z) / dt * alpha + self.vz * (1 - alpha)
+        dx = x - self.x
+        dy = y - self.y
+        dz = z - self.z
+        
+        # Deadband: if movement is less than 15cm between frames, assume stationary
+        # This prevents noisy depth maps from creating massive artificial velocity spikes
+        dist_moved = (dx**2 + dy**2 + dz**2)**0.5
+        if dist_moved < 0.15:
+            inst_vx, inst_vy, inst_vz = 0.0, 0.0, 0.0
+        else:
+            inst_vx = dx / dt
+            inst_vy = dy / dt
+            inst_vz = dz / dt
+            
+        alpha = 0.2 # Heavier smoothing factor
+        self.vx = inst_vx * alpha + self.vx * (1 - alpha)
+        self.vy = inst_vy * alpha + self.vy * (1 - alpha)
+        self.vz = inst_vz * alpha + self.vz * (1 - alpha)
         self.x = x
         self.y = y
         self.z = z
@@ -175,7 +189,11 @@ def main(args=None):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            try:
+                rclpy.shutdown()
+            except Exception:
+                pass
 
 if __name__ == '__main__':
     main()
