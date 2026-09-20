@@ -7,6 +7,7 @@ from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, Command, PythonExpression
 from launch.conditions import IfCondition
 from launch_ros.actions import Node
+from launch_ros.descriptions import ParameterValue
 
 def generate_launch_description():
 
@@ -18,7 +19,17 @@ def generate_launch_description():
     # Arguments
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     nav_mode = LaunchConfiguration('nav_mode', default='mapping')
-    map_yaml_file = os.path.join(hospobot_bringup_dir, 'maps', 'hospital_map.yaml')
+    map_arg = LaunchConfiguration('map', default='')
+
+    global_maps_dir = '/home/hospobot/hospobot_ws/global_maps'
+    default_map_file = os.path.join(global_maps_dir, 'hospital_map.yaml')
+
+    # Resolve map yaml file for localization
+    map_yaml_file = PythonExpression([
+        f"(('{global_maps_dir}/' + '", map_arg, "') if not '", map_arg, "'.startswith('/') else '", map_arg, "') + ('.yaml' if not '", map_arg, "'.endswith('.yaml') else '') if '", map_arg, "' != '' else '", default_map_file, "'"
+    ])
+
+    is_mapping = ParameterValue(PythonExpression(["'", nav_mode, "' == 'mapping'"]), value_type=bool)
 
     # Xacro parsing
     urdf_file = os.path.join(hospobot_description_dir, 'urdf', 'hospobot.urdf.xacro')
@@ -63,15 +74,21 @@ def generate_launch_description():
         parameters=[{
             'left_node_id': 1,
             'right_node_id': 2,
-            'track_width': 0.0826,
+            'track_width': 0.300,
             'wheel_radius': 0.0625,
             'odom_freq': 20.0,
             'invert_drive_left': True,
             'invert_drive_right': False,
             'invert_odom_left': True,
             'invert_odom_right': False,
-            'heartbeat_timeout': 2.0
-        }]
+            'heartbeat_timeout': 2.0,
+            'publish_tf': False,
+            'max_linear': PythonExpression(["0.25 if '", nav_mode, "' == 'mapping' else 1.05"]),
+            'accel_limit': PythonExpression(["0.6 if '", nav_mode, "' == 'mapping' else 2.0"])
+        }],
+        remappings=[
+            ('/odom', '/odom_can')
+        ]
     )
 
     # 2.1 Cmd Vel Mux
@@ -79,7 +96,12 @@ def generate_launch_description():
         package='odesc_hardware',
         executable='cmd_vel_mux',
         name='cmd_vel_mux',
-        output='screen'
+        output='screen',
+        parameters=[{
+            'invert_controls': False,
+            'max_linear_speed': PythonExpression(["0.25 if '", nav_mode, "' == 'mapping' else 0.0"]),
+            'max_angular_speed': PythonExpression(["0.45 if '", nav_mode, "' == 'mapping' else 0.0"])
+        }]
     )
 
     # 2.2 Diagnostics Node
@@ -117,10 +139,13 @@ def generate_launch_description():
         package='hospobot_perception',
         executable='laser_filter_node',
         name='laser_filter_node',
-        output='screen'
+        output='screen',
+        parameters=[{
+            'flip_angles': False
+        }]
     )
 
-    # 3b. Laser ICP Odometry
+    # 3b. Laser ICP Odometry (Scan-to-scan matching, immune to wheel slip)
     icp_odometry_node = Node(
         package='rtabmap_odom',
         executable='icp_odometry',
@@ -128,30 +153,33 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'frame_id': 'base_footprint',
-            'odom_frame_id': 'odom_laser',
-            'publish_tf': False, # Disabled to let EKF publish base_footprint tf
+            'odom_frame_id': 'odom',
+            'publish_tf': True,
             'wait_for_transform': 0.2,
             'expected_update_rate': 10.0,
             'Odom/GuessMotion': 'true',
-            'Icp/MaxCorrespondenceDistance': '0.3',
-            'Icp/MaxTranslation': '1.0',
-            'Odom/ResetCountdown': '1',
+            'Icp/MaxCorrespondenceDistance': '0.5',
+            'Icp/MaxTranslation': '0.7',
+            'Odom/ResetCountdown': '0', # Maintain continuous prediction on momentary scan occlusion
+            'publish_null_when_lost': False,
+            'Reg/Force3DoF': 'true',
         }],
         remappings=[
             ('scan', '/scan'),
-            ('odom', '/odom_laser')
+            ('odom', '/odom')
         ]
     )
 
     # 4. Nav2 Bringup (Navigation Stack) - REMOVED from auto-start
     # This will now be launched dynamically via nav2_manager_node
     
-    # 5. Nav2 Process Manager
+    # 5. Nav2 Process Manager (not needed in driving mode)
     nav2_manager_node = Node(
         package='odesc_hardware',
         executable='nav2_manager_node',
         name='nav2_manager_node',
-        output='screen'
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' != 'driving'"]))
     )
 
     # 5b. RTAB-Map RGB-D Odometry - REMOVED (Using On-Device VIO instead)
@@ -215,55 +243,32 @@ def generate_launch_description():
         ],
         parameters=[os.path.join(hospobot_bringup_dir, 'config', 'ekf.yaml')]
     )
-    # 9. RTAB-Map SLAM - For Mapping
-    rtabmap_node = Node(
+    # 9. SLAM Toolbox (Online Async) - 2D LiDAR Ceres Scan-Matching Mapping
+    slam_config_path = os.path.join(hospobot_bringup_dir, 'config', 'mapper_params_online_async.yaml')
+    slam_node = Node(
         condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'mapping'"])),
-        package='rtabmap_slam',
-        executable='rtabmap',
-        name='rtabmap',
+        package='slam_toolbox',
+        executable='async_slam_toolbox_node',
+        name='slam_toolbox',
         output='screen',
-        parameters=[{
-            'frame_id': 'base_footprint',
-            'subscribe_depth': True,
-            'subscribe_rgb': True,
-            'subscribe_scan': True,
-            'subscribe_odom_info': False, # We are using standard nav_msgs/Odometry from VIO
-            'approx_sync': True,
-            'map_always_update': True,
-            'Grid/FromDepth': 'false',
-            'Grid/MaxObstacleHeight': '1.5',
-            'Grid/MaxGroundHeight': '0.15',
-            'Grid/Sensor': '0', # 0=LaserScan, 1=Depth
-            'Grid/NormalsSegmentation': 'false',
-            'Grid/RangeMax': '12.0',
-            'Grid/RayTracing': 'true',
-            'RGBD/ProximityBySpace': 'true',
-            'RGBD/NeighborLinkRefining': 'true',
-            'Reg/Strategy': '1', # 1=ICP
-            'Reg/Force3DoF': 'true',
-            'Optimizer/Slam2D': 'true',
-            'Rtabmap/DetectionRate': '2.0',
-            'Icp/MaxTranslation': '3.0',
-            'Icp/MaxCorrespondenceDistance': '0.3',
-            'Icp/CorrespondenceRatio': '0.05',
-            'Mem/STMSize': '30',
-            'RGBD/OptimizeMaxError': '3.0',
-            'Vis/MinInliers': '8',
-            'Kp/DetectorStrategy': '0',
-            'Kp/MaxFeatures': '1000',
-            'RGBD/AngularUpdate': '0.1',
-            'RGBD/LinearUpdate': '0.1',
-            'RGBD/LoopClosureReextractFeatures': 'true'
-        }],
-        remappings=[
-            ('rgb/image', '/oak/rgb/image_raw'),
-            ('depth/image', '/oak/stereo/image_raw'),
-            ('rgb/camera_info', '/oak/rgb/camera_info'),
-            ('odom', '/odom'),
-            ('scan', '/scan'),
-            ('grid_map', '/map')
-        ],
-        arguments=[]
+        parameters=[
+            slam_config_path,
+            {'use_sim_time': use_sim_time}
+        ]
+    )
+
+    # 9a. SLAM Toolbox Lifecycle Manager (Auto-starts slam_toolbox to publish map frame)
+    slam_lifecycle_node = Node(
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'mapping'"])),
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_slam',
+        output='screen',
+        parameters=[
+            {'use_sim_time': use_sim_time},
+            {'autostart': True},
+            {'node_names': ['slam_toolbox']}
+        ]
     )
 
     # 9b. AMCL & Map Server - For Localization
@@ -371,11 +376,11 @@ def generate_launch_description():
         name='teleop_twist_joy_node',
         parameters=[{
             'require_enable_button': True,
-            'enable_button': 5, # R1 Bumper
+            'enable_button': 4, # L1 Bumper
             'axis_linear.x': 1, # Left stick Up/Down
             'scale_linear.x': 0.43,
-            'axis_angular.z': 0, # Left stick Left/Right
-            'scale_angular.z': 0.46,
+            'axis_angular.yaw': 0, # Left stick Left/Right
+            'scale_angular.yaw': 0.46,
         }],
         remappings=[
             ('/cmd_vel', '/cmd_vel_ps5')
@@ -390,9 +395,23 @@ def generate_launch_description():
         output='screen'
     )
 
+    # 19. Robot Pose Circle & 3-Cone LIDAR FOV Visualizer (RViz)
+    robot_fov_indicator_node = Node(
+        package='hospobot_perception',
+        executable='robot_fov_indicator_node',
+        name='robot_fov_indicator',
+        output='screen',
+        parameters=[{
+            'flip_angles': False,
+            'cone_range': 2.5,
+            'robot_radius': 0.26
+        }]
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='false', description='Use simulation (Gazebo) clock if true'),
         DeclareLaunchArgument('nav_mode', default_value='mapping', description='Navigation mode: mapping or localization'),
+        DeclareLaunchArgument('map', default_value='', description='Map file or name in global_maps for mapping or localization'),
         # Bring up can0 first so SocketCAN bridge finds it ready
         can0_setup,
         robot_state_publisher_node,
@@ -402,22 +421,24 @@ def generate_launch_description():
         rosbridge_server,
         sllidar_node,
         laser_filter_node,
-        icp_odometry_node,
+        icp_odometry_node, # High-precision 2D scan-matching odometry (replaces slipping wheel TF)
         # imu_node, # Disabled, hardware removed
-        rtabmap_node,
+        slam_node,
+        slam_lifecycle_node,
         localization_node,
         nav2_manager_node,
-        pc_to_laser_node,
+        # pc_to_laser_node, # Disabled to avoid duplicate scan topics
         web_server,
         mapping_web_server,
         camera_node,
         odom_republisher_node,
-        ekf_node,
+        # ekf_node, # Disabled: icp_odometry directly broadcasts odom->base_footprint TF
         socket_can_receiver_node,
         socket_can_sender_node,
         system_can_bridge_node,
         joy_node,
         teleop_twist_joy_node,
-        footprint_publisher_node
+        footprint_publisher_node,
+        robot_fov_indicator_node
     ])
 

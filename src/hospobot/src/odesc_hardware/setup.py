@@ -25,6 +25,7 @@ setup(
             'diagnostics_node = odesc_hardware.diagnostics_node:main',
             'nav2_manager_node = odesc_hardware.nav2_manager_node:main',
             'bno086_node = odesc_hardware.bno086_node:main',
+            'hospobot_init_app = odesc_hardware.hospobot_init_app:main',
         ],
     },
 )

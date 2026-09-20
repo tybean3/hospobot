@@ -18,8 +18,8 @@ class OdescDriveNode(Node):
         self.declare_parameter('left_serial_port', '/dev/ttyUSB0')
         self.declare_parameter('right_serial_port', '/dev/ttyUSB1')
         self.declare_parameter('baudrate', 115200)
-        self.declare_parameter('track_width', 0.4)
-        self.declare_parameter('wheel_radius', 0.08)
+        self.declare_parameter('track_width', 0.300)
+        self.declare_parameter('wheel_radius', 0.0625)
         self.declare_parameter('odom_freq', 50.0) # Hz
         self.declare_parameter('invert_left', False)
         self.declare_parameter('invert_right', False)

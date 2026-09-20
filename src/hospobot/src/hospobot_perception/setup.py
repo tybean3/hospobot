@@ -31,7 +31,8 @@ setup(
             'semantic_tracker_node = hospobot_perception.semantic_tracker_node:main',
             'footprint_publisher_node = hospobot_perception.footprint_publisher_node:main',
             'semantic_costmap_bridge = hospobot_perception.semantic_costmap_bridge:main',
-            'laser_filter_node = hospobot_perception.laser_filter_node:main'
+            'laser_filter_node = hospobot_perception.laser_filter_node:main',
+            'robot_fov_indicator_node = hospobot_perception.robot_fov_indicator_node:main'
         ],
     },
 )

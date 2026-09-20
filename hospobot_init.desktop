@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Hospobot Initialization
+Exec=env QT_QPA_PLATFORM=wayland /home/hospobot/hospobot_ws/venv/bin/python3 /home/hospobot/hospobot_ws/src/hospobot/src/odesc_hardware/odesc_hardware/hospobot_init_app.py
+X-GNOME-Autostart-enabled=true
+NoDisplay=false
+Hidden=false
+Terminal=false

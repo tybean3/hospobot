@@ -7,15 +7,38 @@
     <xacro:property name="shell_h" value="0.368"/>
     
     <xacro:property name="wheel_radius" value="0.0625"/>
-    <xacro:property name="track_width" value="0.0826"/>
+    <xacro:property name="track_width" value="0.300"/>
     <xacro:property name="axle_z_offset" value="-0.0526"/>
+
+    <xacro:macro name="box_inertia" params="m w h d">
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="${m}"/>
+        <inertia ixx="${(m/12) * (h*h + d*d)}" ixy="0.0" ixz="0.0" iyy="${(m/12) * (w*w + d*d)}" iyz="0.0" izz="${(m/12) * (w*w + h*h)}"/>
+      </inertial>
+    </xacro:macro>
+
+    <xacro:macro name="cylinder_inertia" params="m r h">
+      <inertial>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0" />
+        <mass value="${m}"/>
+        <inertia ixx="${(m/12) * (3*r*r + h*h)}" ixy="0" ixz="0" iyy="${(m/12) * (3*r*r + h*h)}" iyz="0" izz="${(m/2) * (r*r)}"/>
+      </inertial>
+    </xacro:macro>
+
+    <xacro:macro name="sphere_inertia" params="m r">
+      <inertial>
+        <mass value="${m}"/>
+        <inertia ixx="${(2/5) * m * (r*r)}" ixy="0.0" ixz="0.0" iyy="${(2/5) * m * (r*r)}" iyz="0.0" izz="${(2/5) * m * (r*r)}"/>
+      </inertial>
+    </xacro:macro>
 
     <link name="base_footprint"/>
 
     <joint name="base_joint" type="fixed">
         <parent link="base_footprint"/>
         <child link="base_link"/>
-        <origin xyz="0 0 ${ref_height}" rpy="0 0 0"/>
+        <origin xyz="0 0 ${ref_height - 0.10}" rpy="0 0 0"/>
     </joint>
 
     <link name="virtual_laser_link"/>
@@ -25,7 +48,18 @@
         <origin xyz="0 0 0.001" rpy="0 0 0"/>
     </joint>
 
-    <link name="base_link"/>
+    <link name="base_link">
+        <xacro:box_inertia m="10.0" w="${shell_w}" h="${shell_l}" d="${shell_h}"/>
+        <visual>
+            <origin xyz="0 0 ${shell_h/2 - 0.25}" rpy="0 0 ${pi/2}"/>
+            <geometry><mesh filename="package://hospobot_description/meshes/HospoBot_Full_Model.stl"/></geometry>
+            <material name="light_blue"><color rgba="0.6 0.8 1.0 1"/></material>
+        </visual>
+        <collision>
+            <origin xyz="0 0 ${shell_h/2}" rpy="0 0 0"/>
+            <geometry><box size="${shell_l} ${shell_w} ${shell_h}"/></geometry>
+        </collision>
+    </link>
 
     <xacro:macro name="wheel" params="prefix y_reflect">
         <link name="${prefix}_wheel">
@@ -36,6 +70,13 @@
                 </geometry>
                 <material name="black"><color rgba="0.1 0.1 0.1 1"/></material>
             </visual>
+            <collision>
+                <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+                <geometry>
+                    <cylinder radius="${wheel_radius}" length="0.0172"/>
+                </geometry>
+            </collision>
+            <xacro:cylinder_inertia m="1.0" r="${wheel_radius}" h="0.0172"/>
         </link>
 
         <joint name="${prefix}_wheel_joint" type="continuous">
@@ -55,6 +96,10 @@
                 <geometry><sphere radius="0.025"/></geometry>
                 <material name="grey"><color rgba="0.5 0.5 0.5 1"/></material>
             </visual>
+            <collision>
+                <geometry><sphere radius="0.025"/></geometry>
+            </collision>
+            <xacro:sphere_inertia m="0.5" r="0.025"/>
         </link>
         <joint name="${prefix}_caster_joint" type="fixed">
             <parent link="base_link"/>
@@ -80,18 +125,7 @@
         <origin xyz="0 0 -0.090" rpy="0 0 0"/>
     </joint>
 
-    <link name="chassis_visual">
-        <visual>
-            <origin xyz="0 0 ${shell_h/2}" rpy="0 0 0"/>
-            <geometry><box size="${shell_l} ${shell_w} ${shell_h}"/></geometry>
-            <material name="white"><color rgba="1 1 1 1"/></material>
-        </visual>
-    </link>
-    <joint name="chassis_joint" type="fixed">
-        <parent link="base_link"/>
-        <child link="chassis_visual"/>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-    </joint>
+
     <link name="oakd_frame"/>
     <joint name="oakd_joint" type="fixed">
         <parent link="base_footprint"/>

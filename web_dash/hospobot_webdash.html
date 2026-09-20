@@ -496,16 +496,24 @@
             font-weight: bold;
         }
 
-        /* Map Structure: Translates underneath the fixed rotating wrapper */
-        #map-wrapper {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            transform: scale(0.4);
-            transition: transform 0.1s linear;
-            will-change: transform;
+        .room-sel-btn {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: all 0.1s ease;
+        }
+        .room-sel-btn:hover {
+            background-color: #2563eb;
+            transform: scale(1.05);
+        }
+        .room-sel-btn:active {
+            transform: scale(0.95);
         }
 
         .slam-map {
@@ -1548,17 +1556,19 @@
             background-color: #10b981;
             cursor: pointer;
             z-index: 20;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
             transition: transform 0.2s, background-color 0.2s;
             display: flex;
             justify-content: center;
             align-items: center;
             border-radius: 6px;
         }
+
         .room-btn:hover {
             transform: scale(1.1);
             background-color: #059669;
         }
+
         .room-label {
             position: absolute;
             color: #e2e8f0;
@@ -1636,17 +1646,25 @@
             </div>
         </div>
 
-        <div class="hotspot-viewport" id="viewport">
-            <div id="map-wrapper">
-                <div class="slam-map" id="slam-map">
-                    <img src="floorplan.png" id="floorplan-img" style="position: absolute; top: 1000px; left: 1500px; width: 1024px; height: 2048px; object-fit: contain; pointer-events: auto; user-select: none;" onclick="alert('X: ' + Math.round((event.clientX - this.getBoundingClientRect().left) * (1024 / this.getBoundingClientRect().width)) + ', Y: ' + Math.round((event.clientY - this.getBoundingClientRect().top) * (2048 / this.getBoundingClientRect().height)))" />
-
-                    <canvas id="path-canvas" width="4000" height="4000"></canvas>
-                    <div class="robot-body" id="robot-model" style="transition: transform 0.1s linear;">
-                        <div class="robot-front"></div>
-                        <div class="robot-center"></div>
-                    </div>
-                </div>
+        <div class="hotspot-viewport" id="viewport" style="display: flex; flex-direction: column; align-items: center; padding: 40px; overflow-y: auto;">
+            <h2 style="color: #f8fafc; font-size: 36px; margin-bottom: 30px;">Select Destination</h2>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; max-width: 900px;">
+                <button class="room-sel-btn" onclick="navigateToRoom('6-101')">6-101</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6-102')">6-102</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6-103')">6-103</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6-104')">6-104</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6-105')">6-105</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6-106')">6-106</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6-107')">6-107</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6-108')">6-108</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6-109')">6-109</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6-111')">6-111</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6-112')">6-112</button>
+                <button choslass="room-sel-btn" onclick="navigateToRoom('6-113')">6-113</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6-114')">6-114</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6-115')">6-115</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6PC1')">6PC1</button>
+                <button class="room-sel-btn" onclick="navigateToRoom('6-1S1')">6-1S1</button>
             </div>
         </div>
 
@@ -1655,7 +1673,7 @@
     </div>
 
     <div id="view-semantic" class="view-container">
-        <h1 class="network-header" style="margin-top: 30px;">Semantic <span>Debug</span></h1>
+        <h1 class="network-header" style="margin-top: 30px;"> <span></span></h1>
         <div class="semantic-container">
             <div class="radar-panel">
                 <h3>Live Radar (Top-Down)</h3>
@@ -1876,7 +1894,10 @@
                     </div>
                 </div>
                 <!-- Control Mode Widget -->
-                <div class="dashboard-widget" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" onclick="cycleControlMode()" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.5)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+                <div class="dashboard-widget" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;"
+                    onclick="cycleControlMode()"
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.5)';"
+                    onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
                     <div class="widget-title">
                         Control Mode
                     </div>
@@ -2175,18 +2196,20 @@
             <!-- Left Column: Motor Status -->
             <div class="settings-card">
                 <h3>Motor Diagnostics & Calibration</h3>
-                <div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center;">
+                <div style="display: flex; gap: 8px; margin-bottom: 20px; align-items: center; flex-wrap: wrap;">
                     <button class="btn-primary" id="btn-calib-both" onclick="recalibrateBoth(this)">Calibrate
                         Both</button>
+                    <button class="btn-primary" id="btn-index-both" onclick="searchIndexBoth(this)"
+                        style="background: #7c3aed;">Search Index Both</button>
                     <button class="btn-primary" id="btn-reboot-both" onclick="rebootBoth(this)"
                         style="background: #dc2626; color: white; border: none;">Reboot Both</button>
-                    
+
                     <!-- Both Motors State Toggle -->
-                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 1.2vh; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-left: auto;">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; font-size: 1.2vh; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-left: auto;">
                         <span style="margin-right: 5px;">IDLE</span>
                         <label class="toggle-switch" style="transform: scale(0.7); margin: 0;">
-                            <input type="checkbox" id="toggle-state-both"
-                                onchange="setMotorStateBoth(this.checked)">
+                            <input type="checkbox" id="toggle-state-both" onchange="setMotorStateBoth(this.checked)">
                             <span class="slider"></span>
                         </label>
                         <span style="margin-left: 5px;">CL-VEL</span>
@@ -2198,17 +2221,19 @@
                         <div class="motor-name">Left Motor (ODESC)</div>
                         <div class="motor-detail">State: <span class="ok" id="set-l-state">Closed Loop Control</span>
                         </div>
-                        <div class="motor-detail">Voltage: <span id="set-l-volt">24.2V</span> | Current: <span
-                                id="set-l-curr">1.2A</span></div>
+                        <div class="motor-detail">Voltage: <span id="set-l-volt">--V</span> | Current: <span
+                                id="set-l-curr">--A</span></div>
                         <div class="motor-detail">Errors: <span class="ok" id="set-l-err">None</span></div>
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
                         <button class="btn-restart" id="btn-calib-left"
                             onclick="recalibrateMotor('left', this)">Recalibrate</button>
+                        <button class="btn-restart" id="btn-index-left" onclick="searchIndexMotor('left', this)"
+                            style="background: #7c3aed;">Search Index</button>
                         <button class="btn-restart" id="btn-reboot-left" onclick="rebootMotor('left', this)"
                             style="background: #dc2626;">Reboot</button>
                         <div
-                            style="display: flex; align-items: center; justify-content: space-between; font-size: 1.2vh; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-top: 5px;">
+                            style="display: flex; align-items: center; justify-content: space-between; font-size: 1.2vh; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-top: 2px;">
                             <span>IDLE</span>
                             <label class="toggle-switch" style="transform: scale(0.7); margin: 0;">
                                 <input type="checkbox" id="toggle-state-left"
@@ -2222,20 +2247,22 @@
 
                 <div class="motor-status-box">
                     <div class="motor-info">
-                        <div class="motor-name">Right Motor (ODESC)</div>
+                        <div class="motor-name">Right Motor (ODrive S1)</div>
                         <div class="motor-detail">State: <span class="ok" id="set-r-state">Closed Loop Control</span>
                         </div>
-                        <div class="motor-detail">Voltage: <span id="set-r-volt">24.1V</span> | Current: <span
-                                id="set-r-curr">1.1A</span></div>
+                        <div class="motor-detail">Voltage: <span id="set-r-volt">--V</span> | Current: <span
+                                id="set-r-curr">--A</span></div>
                         <div class="motor-detail">Errors: <span class="ok" id="set-r-err">None</span></div>
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
                         <button class="btn-restart" id="btn-calib-right"
                             onclick="recalibrateMotor('right', this)">Recalibrate</button>
+                        <button class="btn-restart" id="btn-index-right" onclick="searchIndexMotor('right', this)"
+                            style="background: #7c3aed;">Search Index</button>
                         <button class="btn-restart" id="btn-reboot-right" onclick="rebootMotor('right', this)"
                             style="background: #dc2626;">Reboot</button>
                         <div
-                            style="display: flex; align-items: center; justify-content: space-between; font-size: 1.2vh; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-top: 5px;">
+                            style="display: flex; align-items: center; justify-content: space-between; font-size: 1.2vh; background: #0f172a; padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; margin-top: 2px;">
                             <span>IDLE</span>
                             <label class="toggle-switch" style="transform: scale(0.7); margin: 0;">
                                 <input type="checkbox" id="toggle-state-right"
@@ -2249,7 +2276,7 @@
 
                 <p style="color: #64748b; font-size: 1.3vh; margin-top: 20px;">
                     Warning: Recalibrating while hospobot is on the ground may fail due to friction. Lift the wheels if
-                    full index search is required.
+                    full index search is required. Toggles reflect live motor state and update automatically.
                 </p>
             </div>
 
@@ -2271,7 +2298,8 @@
                         <span class="setting-desc">Clamps the /cmd_vel maximum turning speed (rad/s)</span>
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="range" id="max-ang-vel" min="0.1" max="1.05" step="0.05" value="0.46" oninput="document.getElementById('max-ang-val').innerText = this.value">
+                        <input type="range" id="max-ang-vel" min="0.1" max="1.05" step="0.05" value="0.46"
+                            oninput="document.getElementById('max-ang-val').innerText = this.value">
                         <span id="max-ang-val" style="width: 30px;">0.46</span>
                     </div>
                 </div>
@@ -2328,7 +2356,7 @@
         // --- MAP CALIBRATION ---
         // Tune these values to align the robot's physical coordinates with the image
         // MAP_ORIGIN is the pixel offset from the center of the slam-map container
-        const MAP_SCALE_PX_PER_METER = 100.0; 
+        const MAP_SCALE_PX_PER_METER = 100.0;
         const MAP_ORIGIN_X_PX = 0;
         const MAP_ORIGIN_Y_PX = 0;
         const MAP_ROTATION_OFFSET_DEG = 0;
@@ -2496,50 +2524,88 @@
             try {
                 let data = JSON.parse(msg.data);
 
-                // Left motor — map Unknown to Disconnected
+                // --- LEFT MOTOR ---
                 let lErrDecoded = decodeOdriveError(data.left.error);
+                const leftIsClosedLoop = data.left.state.includes('Closed-Loop');
+                const leftIsIdle = data.left.state === 'Idle';
                 const leftStateDisplay = (data.left.state === 'Unknown') ? 'Disconnected' : data.left.state;
+
                 document.getElementById('set-l-state').innerText = leftStateDisplay;
                 document.getElementById('set-l-volt').innerText = data.left.voltage + 'V';
                 document.getElementById('set-l-curr').innerText = data.left.current + 'A';
-                document.getElementById('set-l-err').innerText = lErrDecoded;
-                document.getElementById('set-l-err').className = lErrDecoded === "None" ? "ok" : "err";
-                document.getElementById('set-l-state').className = data.left.state.includes("Closed-Loop") ? "ok" : "err";
 
-                // Right motor — map Unknown to Disconnected
+                // Error display: show decoded name + raw hex, highlighted if non-zero
+                const lErrIsNone = (lErrDecoded === 'None');
+                const lErrRaw = data.left.error !== '0x0' ? (' (' + data.left.error + ')') : '';
+                document.getElementById('set-l-err').innerText = lErrIsNone ? 'None' : (lErrDecoded + lErrRaw);
+                document.getElementById('set-l-err').className = lErrIsNone ? 'ok' : 'err';
+                document.getElementById('set-l-state').className = leftIsClosedLoop ? 'ok' : (leftIsIdle ? '' : 'err');
+
+                // Sync toggle to true state — only update if not user-interacting
+                const toggleL = document.getElementById('toggle-state-left');
+                if (!toggleL._userInteracting) {
+                    toggleL.checked = leftIsClosedLoop;
+                }
+
+                // --- RIGHT MOTOR ---
                 let rErrDecoded = decodeOdriveError(data.right.error);
+                const rightIsClosedLoop = data.right.state.includes('Closed-Loop');
+                const rightIsIdle = data.right.state === 'Idle';
                 const rightStateDisplay = (data.right.state === 'Unknown') ? 'Disconnected' : data.right.state;
+
                 document.getElementById('set-r-state').innerText = rightStateDisplay;
                 document.getElementById('set-r-volt').innerText = data.right.voltage + 'V';
                 document.getElementById('set-r-curr').innerText = data.right.current + 'A';
-                document.getElementById('set-r-err').innerText = rErrDecoded;
-                document.getElementById('set-r-err').className = rErrDecoded === "None" ? "ok" : "err";
-                document.getElementById('set-r-state').className = data.right.state.includes("Closed-Loop") ? "ok" : "err";
 
-                // Dashboard drivetrain widgets
+                const rErrIsNone = (rErrDecoded === 'None');
+                const rErrRaw = data.right.error !== '0x0' ? (' (' + data.right.error + ')') : '';
+                document.getElementById('set-r-err').innerText = rErrIsNone ? 'None' : (rErrDecoded + rErrRaw);
+                document.getElementById('set-r-err').className = rErrIsNone ? 'ok' : 'err';
+                document.getElementById('set-r-state').className = rightIsClosedLoop ? 'ok' : (rightIsIdle ? '' : 'err');
+
+                const toggleR = document.getElementById('toggle-state-right');
+                if (!toggleR._userInteracting) {
+                    toggleR.checked = rightIsClosedLoop;
+                }
+
+                // Sync "both" toggle: on only if BOTH are in closed loop
+                const toggleBoth = document.getElementById('toggle-state-both');
+                if (!toggleBoth._userInteracting) {
+                    toggleBoth.checked = leftIsClosedLoop && rightIsClosedLoop;
+                }
+
+                // --- Dashboard drivetrain widgets ---
                 const dashStateL = document.getElementById('dash-state-l');
                 const dashStateR = document.getElementById('dash-state-r');
                 if (dashStateL) {
                     dashStateL.innerText = leftStateDisplay;
-                    dashStateL.style.color = data.left.state.includes("Closed-Loop") ? "#10b981" : (data.left.state === "Idle" ? "#f59e0b" : "#ef4444");
+                    dashStateL.style.color = leftIsClosedLoop ? '#10b981' : (leftIsIdle ? '#f59e0b' : '#ef4444');
                 }
                 if (dashStateR) {
                     dashStateR.innerText = rightStateDisplay;
-                    dashStateR.style.color = data.right.state.includes("Closed-Loop") ? "#10b981" : (data.right.state === "Idle" ? "#f59e0b" : "#ef4444");
+                    dashStateR.style.color = rightIsClosedLoop ? '#10b981' : (rightIsIdle ? '#f59e0b' : '#ef4444');
                 }
 
-                // CAN Network ODESC indicators — Connected / Disconnected only
+                // CAN Network ODESC indicators
                 const knownOfflineStates = ['Unknown', 'No Heartbeat', 'Disconnected', 'OFFLINE', 'Heartbeat timeout'];
                 const isLeftConnected = !knownOfflineStates.includes(data.left.state);
                 const isRightConnected = !knownOfflineStates.includes(data.right.state);
-
                 updateIndicator('cannet-odesc-l', 'cannet-detail-odesc-l',
                     isLeftConnected ? 'Connected' : 'Disconnected');
                 updateIndicator('cannet-odesc-r', 'cannet-detail-odesc-r',
                     isRightConnected ? 'Connected' : 'Disconnected');
 
-
             } catch (e) { }
+        });
+
+        // Mark toggles as user-interacting briefly so rapid backend updates don't override a user click
+        ['toggle-state-left', 'toggle-state-right', 'toggle-state-both'].forEach(function(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('change', function() {
+                el._userInteracting = true;
+                setTimeout(function() { el._userInteracting = false; }, 3000);
+            });
         });
 
         let diagTimeout = null;
@@ -2805,7 +2871,7 @@
             if (robotModel) {
                 const poseXMeters = pose.x / 100.0;
                 const poseYMeters = pose.y / 100.0;
-                
+
                 // Calculate pixel coordinates using the calibration constants
                 const pixelX = MAP_ORIGIN_X_PX + (poseXMeters * MAP_SCALE_PX_PER_METER);
                 // Invert Y because CSS screen coordinates go down, while ROS goes up
@@ -2953,7 +3019,7 @@
 
             let linear = 0;
             let angular = 0;
-            
+
             const maxLin = parseFloat(document.getElementById('cfg-max-linear')?.value || 0.5);
             const maxAng = parseFloat(document.getElementById('max-ang-vel')?.value || 1.05);
 
@@ -2963,8 +3029,8 @@
             if (activeKeys['d']) angular -= maxAng;
 
             // Ensure we only take control if the correct tabs are open
-            const isActive = document.getElementById('view-status').classList.contains('active') && 
-                             document.getElementById('panel-manual').classList.contains('active');
+            const isActive = document.getElementById('view-status').classList.contains('active') &&
+                document.getElementById('panel-manual').classList.contains('active');
 
             if (!isActive) {
                 linear = 0;
@@ -2978,11 +3044,11 @@
                 clearInterval(manualPublishInterval);
                 manualPublishInterval = null;
             }
-            
+
             if (linear !== 0 || angular !== 0) {
                 manualPublishInterval = setInterval(() => {
-                    const stillActive = document.getElementById('view-status').classList.contains('active') && 
-                                        document.getElementById('panel-manual').classList.contains('active');
+                    const stillActive = document.getElementById('view-status').classList.contains('active') &&
+                        document.getElementById('panel-manual').classList.contains('active');
                     if (stillActive) {
                         setManualVel(linear, angular);
                     } else {
@@ -3034,17 +3100,17 @@
                     break;
                 }
             }
-            
+
             if (!roomEl) return;
-            
+
             const cssLeft = parseInt(roomEl.style.left);
             const cssTop = parseInt(roomEl.style.top);
-            
+
             const targetX = (cssLeft - 2000) / 100;
             const targetY = (2000 - cssTop) / 100;
-            
+
             console.log(`Navigating to ${roomName} at map coords (${targetX}, ${targetY})`);
-            
+
             let rad = 0 * (Math.PI / 180);
             let qz = Math.sin(rad / 2);
             let qw = Math.cos(rad / 2);
@@ -3175,6 +3241,13 @@
             });
         }
 
+        function searchIndexMotor(side, btnEl) {
+            performAction('index', side, btnEl, "Search Index", () => {
+                let pub = side === 'left' ? stateLPub : stateRPub;
+                pub.publish(new ROSLIB.Message({ data: 'INDEX' }));
+            });
+        }
+
         function rebootMotor(side, btnEl) {
             performAction('reboot', side, btnEl, "Reboot", () => {
                 let pub = side === 'left' ? rebootLPub : rebootRPub;
@@ -3199,6 +3272,13 @@
             performAction('calib', 'both', btnEl, "Calibrate Both", () => {
                 calibLPub.publish(new ROSLIB.Message({}));
                 calibRPub.publish(new ROSLIB.Message({}));
+            });
+        }
+
+        function searchIndexBoth(btnEl) {
+            performAction('index', 'both', btnEl, "Search Index Both", () => {
+                stateLPub.publish(new ROSLIB.Message({ data: 'INDEX' }));
+                stateRPub.publish(new ROSLIB.Message({ data: 'INDEX' }));
             });
         }
 

@@ -14,7 +14,8 @@ ekf_filter_node:
     world_frame: odom
     publish_tf: true
 
-    # Trust wheel odometry for X and Yaw velocity to provide an initial guess for ICP.
+    # 1. Wheel odometry: forward linear velocity (X) and differential yaw (Yaw)
+    # Serves as the coarse motion prediction for SLAM Toolbox Ceres scan matcher
     odom0: /odom_can
     odom0_config: [false, false, false,
                    false, false, false,
@@ -25,24 +26,15 @@ ekf_filter_node:
     odom0_differential: false
     odom0_relative: false
 
-    # Trust Laser Odometry for velocity (X, Y, Yaw). This is immune to slip and sway.
-    odom1: /odom_laser
+    # 2. VIO / Camera IMU (OAK-D Pro): Drift-free gyroscope yaw velocity (Yaw)
+    # Fuses visual-inertial heading with wheel odometry without corridor slip
+    odom1: /oak/vio/odometry_fixed
     odom1_config: [false, false, false,
                    false, false, false,
-                   true, true, false,
+                   false, false, false,
                    false, false, true,
                    false, false, false]
     odom1_queue_size: 10
     odom1_differential: false
     odom1_relative: false
 
-    # Trust VIO (Camera IMU + Stereo) for instant YAW velocity to eliminate map skew.
-    odom2: /oak/vio/odometry_fixed
-    odom2_config: [false, false, false,
-                   false, false, false,
-                   true, true, false,
-                   false, false, true,
-                   false, false, false]
-    odom2_queue_size: 10
-    odom2_differential: false
-    odom2_relative: false

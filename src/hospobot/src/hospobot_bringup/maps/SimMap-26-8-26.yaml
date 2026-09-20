@@ -1,0 +1,7 @@
+image: SimMap-26-8-26.pgm
+mode: trinary
+resolution: 0.050
+origin: [-2.579, -6.587, 0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196

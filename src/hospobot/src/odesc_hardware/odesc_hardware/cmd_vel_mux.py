@@ -10,6 +10,10 @@ class CmdVelMux(Node):
         self.declare_parameter('timeout', 0.5)
         self.timeout = self.get_parameter('timeout').value
         
+        self.declare_parameter('invert_controls', False)
+        self.declare_parameter('max_linear_speed', 0.0)
+        self.declare_parameter('max_angular_speed', 0.0)
+        
         self.pub = self.create_publisher(Twist, '/cmd_vel_out', 10)
         
         self.mode = 'auto_priority'
@@ -29,6 +33,7 @@ class CmdVelMux(Node):
         
         self.sub_web = self.create_subscription(Twist, '/cmd_vel_web', self.web_cb, 10)
         self.sub_ps5 = self.create_subscription(Twist, '/cmd_vel_ps5', self.ps5_cb, 10)
+        self.sub_cmd_vel = self.create_subscription(Twist, '/cmd_vel', self.ps5_cb, 10)
         self.sub_nav = self.create_subscription(Twist, '/cmd_vel_nav', self.nav_cb, 10)
         
         self.timer = self.create_timer(0.05, self.timer_cb) # 20Hz loop
@@ -78,7 +83,34 @@ class CmdVelMux(Node):
             if self.is_active(self.mode): source = self.mode
                 
         if source is not None:
-            self.pub.publish(self.last_msg[source])
+            msg = self.last_msg[source]
+            invert = self.get_parameter('invert_controls').get_parameter_value().bool_value
+            max_lin = self.get_parameter('max_linear_speed').get_parameter_value().double_value
+            max_ang = self.get_parameter('max_angular_speed').get_parameter_value().double_value
+
+            out_msg = Twist()
+            if invert and source in ['web', 'ps5', 'cmd_vel']:
+                out_msg.linear.x = -msg.linear.x
+                out_msg.linear.y = -msg.linear.y
+                out_msg.linear.z = msg.linear.z
+                out_msg.angular.x = msg.angular.x
+                out_msg.angular.y = msg.angular.y
+                out_msg.angular.z = msg.angular.z
+            else:
+                out_msg.linear.x = msg.linear.x
+                out_msg.linear.y = msg.linear.y
+                out_msg.linear.z = msg.linear.z
+                out_msg.angular.x = msg.angular.x
+                out_msg.angular.y = msg.angular.y
+                out_msg.angular.z = msg.angular.z
+
+            # Clamp velocities if limits are specified
+            if max_lin > 0.0:
+                out_msg.linear.x = max(-max_lin, min(max_lin, out_msg.linear.x))
+            if max_ang > 0.0:
+                out_msg.angular.z = max(-max_ang, min(max_ang, out_msg.angular.z))
+
+            self.pub.publish(out_msg)
         else:
             stop_msg = Twist()
             self.pub.publish(stop_msg)

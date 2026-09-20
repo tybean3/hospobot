@@ -27,6 +27,7 @@ setup(
             'system_can_bridge = hospobot_can_bridge.system_can_bridge:main',
             'odrive_can_node = hospobot_can_bridge.odrive_can_node:main',
             'odom_republisher = hospobot_can_bridge.odom_republisher:main',
+            'power_monitor = hospobot_can_bridge.power_monitor_node:main',
         ],
     },
 )

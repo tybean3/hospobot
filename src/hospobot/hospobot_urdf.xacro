@@ -7,7 +7,7 @@
     <xacro:property name="shell_h" value="0.368"/>
     
     <xacro:property name="wheel_radius" value="0.0625"/>
-    <xacro:property name="track_width" value="0.280"/>
+    <xacro:property name="track_width" value="0.300"/>
     <xacro:property name="axle_z_offset" value="-0.0526"/>
 
     <link name="base_footprint"/>

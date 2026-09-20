@@ -8,8 +8,8 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 
-# Install urdf files
-install(DIRECTORY urdf
+# Install urdf and meshes files
+install(DIRECTORY urdf meshes
   DESTINATION share/${PROJECT_NAME}
 )
 

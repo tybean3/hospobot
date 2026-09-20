@@ -23,10 +23,13 @@ class Nav2ManagerNode(Node):
                     params_yaml = os.path.join(hospobot_bringup_dir, 'config', 'nav2_params.yaml')
                     slam_yaml = os.path.join(hospobot_bringup_dir, 'config', 'mapper_params_online_async.yaml')
                     
+                    use_sim_time = self.get_parameter('use_sim_time').get_parameter_value().bool_value
+                    use_sim_time_str = 'true' if use_sim_time else 'false'
+                    
                     cmd = [
                         'ros2', 'launch', 'nav2_bringup', 'navigation_launch.py',
                         f'params_file:={params_yaml}',
-                        'use_sim_time:=false'
+                        f'use_sim_time:={use_sim_time_str}'
                     ]
                     self.nav2_process = subprocess.Popen(cmd)
                 except Exception as e:

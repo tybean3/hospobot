@@ -23,7 +23,7 @@ class OdomRepublisher(Node):
     def listener_callback(self, msg):
         self.count += 1
         new_msg = msg
-        new_msg.child_frame_id = 'base_footprint'
+        new_msg.child_frame_id = 'oakd_frame'
         
         # If covariance is all zeros (which breaks EKF), add a default covariance
         if sum(new_msg.pose.covariance) == 0.0:
