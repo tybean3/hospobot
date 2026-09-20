@@ -145,7 +145,7 @@ def generate_launch_description():
         }]
     )
 
-    # 3b. Laser ICP Odometry (Scan-to-scan matching, immune to wheel slip)
+    # 3b. Laser ICP Odometry (Scan-to-scan matching with Kalman filter & outlier rejection)
     icp_odometry_node = Node(
         package='rtabmap_odom',
         executable='icp_odometry',
@@ -158,9 +158,16 @@ def generate_launch_description():
             'wait_for_transform': 0.2,
             'expected_update_rate': 10.0,
             'Odom/GuessMotion': 'true',
-            'Icp/MaxCorrespondenceDistance': '0.5',
-            'Icp/MaxTranslation': '0.7',
-            'Odom/ResetCountdown': '0', # Maintain continuous prediction on momentary scan occlusion
+            'Odom/FilteringStrategy': '1',               # Kalman filter smoothing (absorbs bump shocks & caster jerk)
+            'Odom/Holonomic': 'false',                   # Enforce differential-drive constraint (prevents lateral skews)
+            'Odom/GuessSmoothingDelay': '0.15',          # Smooth velocity prediction across frames
+            'Odom/KalmanProcessNoise': '0.001',
+            'Odom/KalmanMeasurementNoise': '0.01',
+            'Icp/MaxCorrespondenceDistance': '0.25',     # Tighten correspondence search (rejects floor/ceiling glints)
+            'Icp/MaxTranslation': '0.18',                # Clamp translation to 18cm/frame (prevents bump displacement skips)
+            'Icp/MaxRotation': '0.22',                   # Clamp rotation to ~12.6 deg/frame (prevents tilt heading skews)
+            'Icp/OutlierRatio': '0.75',                  # Discard top 25% worst residual points during tilt
+            'Odom/ResetCountdown': '0',                  # Maintain continuous prediction on momentary scan occlusion
             'publish_null_when_lost': False,
             'Reg/Force3DoF': 'true',
         }],
