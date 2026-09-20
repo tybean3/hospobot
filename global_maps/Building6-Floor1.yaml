@@ -1,4 +1,4 @@
-image: hospital_map.pgm
+image: Building6-Floor1.pgm
 mode: trinary
 resolution: 0.050
 origin: [-37.086, -41.989, 0]

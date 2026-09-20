@@ -1,0 +1,7 @@
+free_thresh: 0.196
+image: Building6-Floor1_keepout.pgm
+mode: trinary
+negate: 0
+occupied_thresh: 0.65
+origin: [-37.086, -41.989, 0]
+resolution: 0.05

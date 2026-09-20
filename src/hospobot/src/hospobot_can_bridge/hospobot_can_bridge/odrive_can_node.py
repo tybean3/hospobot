@@ -86,7 +86,8 @@ class OdriveCanNode(Node):
         self.declare_parameter('accel_limit', 2.0)       # Acceleration ramp rate (turns/s^2)
         self.declare_parameter('vel_gain', 0.8)          # Velocity PI proportional gain
         self.declare_parameter('vel_integrator_gain', 4.0) # Velocity PI integrator gain
-        self.declare_parameter('publish_tf', False)      # Disabled: Laser ICP odometry broadcasts TF to eliminate wheel slip
+        self.declare_parameter('publish_tf', False)      # Disabled by default; enabled with odom_wheel for ICP guess
+        self.declare_parameter('odom_frame', 'odom')
 
         self.left_id      = self.get_parameter('left_node_id').value
         self.right_id     = self.get_parameter('right_node_id').value
@@ -109,6 +110,7 @@ class OdriveCanNode(Node):
         self.vel_gain = self.get_parameter('vel_gain').value
         self.vel_integrator_gain = self.get_parameter('vel_integrator_gain').value
         self.publish_tf = bool(self.get_parameter('publish_tf').value)
+        self.odom_frame = str(self.get_parameter('odom_frame').value)
 
 
         # Native direct SocketCAN socket for zero-latency, synchronous CAN dispatch
@@ -556,7 +558,7 @@ class OdriveCanNode(Node):
 
         t = TransformStamped()
         t.header.stamp    = now.to_msg()
-        t.header.frame_id = 'odom'
+        t.header.frame_id = self.odom_frame
         t.child_frame_id  = 'base_footprint'
         t.transform.translation.x = self.x
         t.transform.translation.y = self.y
@@ -570,7 +572,7 @@ class OdriveCanNode(Node):
 
         odom = Odometry()
         odom.header.stamp    = now.to_msg()
-        odom.header.frame_id = 'odom'
+        odom.header.frame_id = self.odom_frame
         odom.child_frame_id  = 'base_footprint'
         odom.pose.pose.position.x = self.x
         odom.pose.pose.position.y = self.y

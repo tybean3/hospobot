@@ -7,12 +7,12 @@
       i_pipeline_type: rgbd
       i_enable_vio: true
     vio:
-      i_fps: 60.0
+      i_fps: 30.0
       i_publish_tf: false
       i_child_frame_id: oakd_frame
     stereo:
       i_depth_preset: DEFAULT
-      i_fps: 60.0
+      i_fps: 30.0
     imu:
       i_batch_report_threshold: 1
       i_max_batch_reports: 10

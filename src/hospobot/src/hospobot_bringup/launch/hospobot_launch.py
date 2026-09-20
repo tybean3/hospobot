@@ -22,7 +22,7 @@ def generate_launch_description():
     map_arg = LaunchConfiguration('map', default='')
 
     global_maps_dir = '/home/hospobot/hospobot_ws/global_maps'
-    default_map_file = os.path.join(global_maps_dir, 'hospital_map.yaml')
+    default_map_file = os.path.join(global_maps_dir, 'Building6-Floor1.yaml')
 
     # Resolve map yaml file for localization
     map_yaml_file = PythonExpression([
@@ -82,7 +82,8 @@ def generate_launch_description():
             'invert_odom_left': True,
             'invert_odom_right': False,
             'heartbeat_timeout': 2.0,
-            'publish_tf': False,
+            'publish_tf': True,
+            'odom_frame': 'odom_wheel',
             'max_linear': PythonExpression(["0.25 if '", nav_mode, "' == 'mapping' else 1.05"]),
             'accel_limit': PythonExpression(["0.6 if '", nav_mode, "' == 'mapping' else 2.0"])
         }],
@@ -154,13 +155,14 @@ def generate_launch_description():
         parameters=[{
             'frame_id': 'base_footprint',
             'odom_frame_id': 'odom',
+            'guess_frame_id': 'odom_wheel',              # Uses wheel motion prior through featureless corridors
             'publish_tf': True,
             'wait_for_transform': 0.2,
             'expected_update_rate': 10.0,
             'Odom/GuessMotion': 'true',
-            'Icp/MaxCorrespondenceDistance': '0.5',
-            'Icp/MaxTranslation': '0.7',
-            'Odom/ResetCountdown': '0', # Maintain continuous prediction on momentary scan occlusion
+            'Odom/ResetCountdown': '1',                  # Automatically recover from momentary scan loss/bumps
+            'Icp/MaxCorrespondenceDistance': '0.5',      # Reliable correspondence window
+            'Icp/MaxTranslation': '0.15',                # Clamped to 15cm/frame (blocks corridor skips while allowing up to 1.5m/s)
             'publish_null_when_lost': False,
             'Reg/Force3DoF': 'true',
         }],
@@ -278,6 +280,56 @@ def generate_launch_description():
         ),
         condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'localization'"])),
         launch_arguments={'map': map_yaml_file, 'use_sim_time': use_sim_time}.items()
+    )
+
+    # 9c. Nav2 Costmap Filter (Keep-Out Zones & Virtual Walls)
+    keepout_yaml_file = PythonExpression([
+        "'", map_yaml_file, "'.replace('.yaml', '_keepout.yaml')"
+    ])
+    has_keepout = PythonExpression([
+        "__import__('os').path.exists('", map_yaml_file, "'.replace('.yaml', '_keepout.yaml')) and '", nav_mode, "' == 'localization'"
+    ])
+
+    filter_mask_server_node = Node(
+        condition=IfCondition(has_keepout),
+        package='nav2_map_server',
+        executable='map_server',
+        name='filter_mask_server',
+        output='screen',
+        parameters=[{
+            'yaml_filename': keepout_yaml_file,
+            'use_sim_time': use_sim_time
+        }],
+        remappings=[('/map', '/filter_mask')]
+    )
+
+    costmap_filter_info_server_node = Node(
+        condition=IfCondition(has_keepout),
+        package='nav2_map_server',
+        executable='costmap_filter_info_server',
+        name='costmap_filter_info_server',
+        output='screen',
+        parameters=[{
+            'type': 0,
+            'filter_info_topic': '/costmap_filter_info',
+            'mask_topic': '/filter_mask',
+            'base': 0.0,
+            'multiplier': 1.0,
+            'use_sim_time': use_sim_time
+        }]
+    )
+
+    lifecycle_manager_costmap_filters = Node(
+        condition=IfCondition(has_keepout),
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_costmap_filters',
+        output='screen',
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            'autostart': True,
+            'node_names': ['filter_mask_server', 'costmap_filter_info_server']
+        }]
     )
 
     # 10. OAK-D Pro W Camera running On-Device VIO
@@ -426,6 +478,9 @@ def generate_launch_description():
         slam_node,
         slam_lifecycle_node,
         localization_node,
+        filter_mask_server_node,
+        costmap_filter_info_server_node,
+        lifecycle_manager_costmap_filters,
         nav2_manager_node,
         # pc_to_laser_node, # Disabled to avoid duplicate scan topics
         web_server,

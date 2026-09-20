@@ -15,27 +15,35 @@ slam_toolbox:
 
     # Ceres Scan Matching tuning for robust wall alignment
     use_scan_matching: true
-    use_scan_barycenter: true
-    minimum_travel_distance: 0.05
-    minimum_travel_heading: 0.04
+    use_scan_barycenter: false # Lock scan reference to fixed laser frame; avoids barycenter jumps on tilt
+    minimum_travel_distance: 0.12 # Require 12cm travel before keyframe; filters bump vibrations
+    minimum_travel_heading: 0.10  # Require ~5.7 deg rotation before keyframe; filters bump/caster wobble
     scan_buffer_size: 50
-    scan_buffer_maximum_scan_distance: 10.0
+    scan_buffer_maximum_scan_distance: 8.5
     link_match_minimum_response_fine: 0.1
     link_scan_maximum_distance: 2.0
-    distance_variance_penalty: 0.3
-    angle_variance_penalty: 0.3
+    distance_variance_penalty: 0.25
+    angle_variance_penalty: 0.25 # Restored angular stiffness to eliminate double-wall ghosting
 
     fine_search_angle_offset: 0.0349
-    coarse_search_angle_offset: 0.785
+    coarse_search_angle_offset: 0.785 # 45 degree search window to easily recover from caster hesitation
     coarse_angle_resolution: 0.0349
-    minimum_angle_penalty: 0.1
+    minimum_angle_penalty: 0.1    # Enforces crisp, single wall alignment
     minimum_distance_penalty: 0.1
     use_response_expansion: true
+
+    # Loop closure and graph relaxation (smooths residual drift when revisiting areas)
+    do_loop_closing: true
+    loop_search_maximum_distance: 6.0 # Widened search radius to automatically snap large loops shut
+    loop_match_minimum_chain_size: 10
+    loop_match_maximum_variance_coarse: 3.0
+    loop_match_minimum_response_coarse: 0.35
+    loop_match_minimum_response_fine: 0.40
     
     transform_publish_period: 0.02
     map_update_interval: 1.0
     resolution: 0.05
-    max_laser_range: 10.0
+    max_laser_range: 8.5
     minimum_time_interval: 0.2
     transform_timeout: 1.5
     tf_buffer_duration: 10.0

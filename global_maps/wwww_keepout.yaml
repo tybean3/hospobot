@@ -1,0 +1,7 @@
+free_thresh: 0.196
+image: wwww_keepout.pgm
+mode: trinary
+negate: 0
+occupied_thresh: 0.65
+origin: [-34.286, -39.025, 0]
+resolution: 0.05

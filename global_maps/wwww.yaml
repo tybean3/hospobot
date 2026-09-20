@@ -1,7 +1,7 @@
-image: hospital_map.pgm
+image: wwww.pgm
 mode: trinary
 resolution: 0.050
-origin: [-37.086, -41.989, 0]
+origin: [-34.286, -39.025, 0]
 negate: 0
 occupied_thresh: 0.65
 free_thresh: 0.196

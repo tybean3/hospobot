@@ -1409,14 +1409,25 @@ class MainWindow(QMainWindow):
             lbl_empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.map_list_layout.addWidget(lbl_empty)
         else:
+            valid_maps = []
             for yf in yaml_files:
                 base_name = os.path.splitext(os.path.basename(yf))[0]
+                if base_name.endswith('_keepout'):
+                    continue
+                valid_maps.append((base_name, yf))
+
+            # Prioritize Building6-Floor1 as primary main map at the top
+            valid_maps.sort(key=lambda x: (0 if x[0] == 'Building6-Floor1' else 1, x[0].lower()))
+
+            for base_name, yf in valid_maps:
                 db_path = os.path.join(global_maps_dir, f"{base_name}.db")
                 has_db = os.path.exists(db_path)
-                sub = f"{base_name}.yaml" + ("  •  [3D/2D SLAM DB available]" if has_db else "")
+                is_main = (base_name == "Building6-Floor1")
+                sub = f"{base_name}.yaml" + ("  •  ⭐ MAIN MAP" if is_main else "") + ("  •  [3D/2D SLAM DB available]" if has_db else "")
+                title_str = f"🗺  {base_name}" + (" (Primary)" if is_main else "")
                 btn = self._create_map_card(
                     map_id=base_name,
-                    title=f"🗺  {base_name}",
+                    title=title_str,
                     subtitle=sub,
                     is_new_option=False
                 )

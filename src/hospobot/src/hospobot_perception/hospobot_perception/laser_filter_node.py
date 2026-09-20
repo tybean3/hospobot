@@ -65,6 +65,12 @@ class LaserFilterNode(Node):
                 elif 33.0 <= angle_deg <= 57.0:
                     blocked = True
                 
+            # Chassis self-reflection and floor bump strike rejection:
+            # Any reading closer than 0.22m is robot chassis/cables/floor glare
+            r = ranges[i]
+            if not math.isnan(r) and (r < 0.22 or r > 12.0):
+                blocked = True
+                
             if blocked:
                 ranges[i] = float('nan') # Set to NaN so SLAM completely ignores it (does not clear space)
                 
@@ -74,9 +80,14 @@ class LaserFilterNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = LaserFilterNode()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
