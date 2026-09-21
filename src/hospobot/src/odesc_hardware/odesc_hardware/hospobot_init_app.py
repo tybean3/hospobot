@@ -18,6 +18,7 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtGui import QFont, QPalette, QColor
 import can
 import shutil
+import json
 
 # ──────────────────────────────────────────────────────────────────────────────
 # ODrive serial helper (O_NONBLOCK, same as before)
@@ -89,8 +90,9 @@ def find_odrive_port() -> str:
 class PowerPollThread(QThread):
     power_updated = pyqtSignal(float, float)   # voltage, current
 
-    def __init__(self):
+    def __init__(self, app=None):
         super().__init__()
+        self.app = app
         self._running = True
         self._last_volt = 0.0
         self._last_curr = 0.0
@@ -98,7 +100,9 @@ class PowerPollThread(QThread):
     def run(self):
         while self._running:
             volt, curr = self._try_ros_read()
-            if volt <= 0.0:
+            # Do NOT touch serial port if launch process is active, to prevent bus collision with odrive_can_node
+            is_launch_active = bool(self.app and self.app._launch_proc and self.app._launch_proc.poll() is None)
+            if volt <= 0.0 and not is_launch_active:
                 volt, curr = self._try_serial_read()
             if volt > 0.0:
                 self._last_volt = volt
@@ -174,27 +178,20 @@ class PowerPollThread(QThread):
         return volt, curr
 
     def _try_ros_read(self):
-        """Read from ROS topics (works once odrive_can_node or power_monitor is running)."""
+        """Read power stats directly from shared cache written by odrive_can_node.
+        Avoids spawning ros2 CLI processes that flood DDS network discovery."""
         volt, curr = 0.0, 0.0
-        env = dict(os.environ)
-        env['ROS_DOMAIN_ID'] = '0'
-        for topic, is_volt in [('/sensors/bus_voltage', True), ('/sensors/bus_current', False)]:
-            try:
-                res = subprocess.run(
-                    ['bash', '-c',
-                     f'source /opt/ros/jazzy/setup.bash && '
-                     f'source /home/hospobot/hospobot_ws/install/setup.bash && '
-                     f'timeout 1.2 ros2 topic echo --once --no-arr {topic} 2>/dev/null'
-                     f' | grep "^data:" | head -1'],
-                    capture_output=True, text=True, timeout=2.5, env=env
-                )
-                line = res.stdout.strip()
-                if line.startswith('data:'):
-                    val = float(line.split(':', 1)[1].strip())
-                    if is_volt: volt = val
-                    else: curr = val
-            except Exception:
-                pass
+        try:
+            power_file = '/tmp/hospobot_power.json'
+            if os.path.exists(power_file):
+                with open(power_file, 'r') as pf:
+                    data = json.load(pf)
+                # Ensure data is recent (within 5 seconds)
+                if time.time() - data.get('timestamp', 0) < 5.0:
+                    volt = float(data.get('voltage', 0.0))
+                    curr = float(data.get('current', 0.0))
+        except Exception:
+            pass
         return volt, curr
 
     def stop(self):
@@ -908,7 +905,7 @@ class MainWindow(QMainWindow):
         self.page_idle          = QWidget(); self.setup_idle_page();         self.stack.addWidget(self.page_idle)
 
         # Power polling (direct serial + ROS fallback)
-        self._power_thread = PowerPollThread()
+        self._power_thread = PowerPollThread(self)
         self._power_thread.power_updated.connect(self._on_power_update)
         self._power_thread.start()
 

@@ -9,25 +9,12 @@ class FootprintPublisherNode(Node):
         self.pub = self.create_publisher(PolygonStamped, '/robot_footprint', 10)
         self.timer = self.create_timer(1.0, self.timer_cb)
         
-        # 16-point rounded square with a nose pointing forward (X-axis)
+        # 475mm Square Footprint (half-width = 0.2375m)
         pts_array = [
-            [0.3000, 0.0000],  # Nose
-            [0.2362, 0.1497],  # Front Left
-            [0.2247, 0.1930],
-            [0.1930, 0.2247],
-            [0.1497, 0.2362],
-            [-0.1497, 0.2362], # Rear Left
-            [-0.1930, 0.2247],
-            [-0.2247, 0.1930],
-            [-0.2362, 0.1497],
-            [-0.2362, -0.1497],# Rear Right
-            [-0.2247, -0.1930],
-            [-0.1930, -0.2247],
-            [-0.1497, -0.2362],
-            [0.1497, -0.2362], # Front Right
-            [0.1930, -0.2247],
-            [0.2247, -0.1930],
-            [0.2362, -0.1497]
+            [0.2375, 0.2375],   # Front Left
+            [-0.2375, 0.2375],  # Rear Left
+            [-0.2375, -0.2375], # Rear Right
+            [0.2375, -0.2375]   # Front Right
         ]        
         self.poly = PolygonStamped()
         self.poly.header.frame_id = 'base_footprint'

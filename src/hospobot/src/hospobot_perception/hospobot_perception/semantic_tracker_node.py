@@ -17,7 +17,7 @@ class TrackedObject:
         self.vy = 0.0
         self.vz = 0.0
         self.last_seen = time.time()
-        self.decay_time = 1.5 # seconds
+        self.decay_time = 0.6 # seconds
 
     def update(self, x, y, z, dt):
         dx = x - self.x

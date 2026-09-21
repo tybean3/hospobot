@@ -1,3 +1,4 @@
+from rclpy.node import HIDDEN_NODE_PREFIX
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
@@ -23,6 +24,7 @@ def generate_launch_description():
 
     global_maps_dir = '/home/hospobot/hospobot_ws/global_maps'
     default_map_file = os.path.join(global_maps_dir, 'Building6-Floor1.yaml')
+    nav2_params_file = os.path.join(hospobot_bringup_dir, 'config', 'nav2_params.yaml')
 
     # Resolve map yaml file for localization
     map_yaml_file = PythonExpression([
@@ -82,6 +84,7 @@ def generate_launch_description():
             'invert_odom_left': True,
             'invert_odom_right': False,
             'heartbeat_timeout': 2.0,
+            'swivel_assist_vel': 0.0,
             'publish_tf': True,
             'odom_frame': 'odom_wheel',
             'max_linear': PythonExpression(["0.25 if '", nav_mode, "' == 'mapping' else 1.05"]),
@@ -142,7 +145,8 @@ def generate_launch_description():
         name='laser_filter_node',
         output='screen',
         parameters=[{
-            'flip_angles': False
+            'flip_angles': False,
+            'nav_mode': nav_mode
         }]
     )
 
@@ -175,13 +179,13 @@ def generate_launch_description():
     # 4. Nav2 Bringup (Navigation Stack) - REMOVED from auto-start
     # This will now be launched dynamically via nav2_manager_node
     
-    # 5. Nav2 Process Manager (not needed in driving mode)
+    # 5. Nav2 Process Manager (for web dashboard manual dynamic toggling when not in auto localization)
     nav2_manager_node = Node(
         package='odesc_hardware',
         executable='nav2_manager_node',
         name='nav2_manager_node',
         output='screen',
-        condition=IfCondition(PythonExpression(["'", nav_mode, "' != 'driving'"]))
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' not in ['driving', 'localization']"]))
     )
 
     # 5b. RTAB-Map RGB-D Odometry - REMOVED (Using On-Device VIO instead)
@@ -279,7 +283,25 @@ def generate_launch_description():
             os.path.join(nav2_bringup_dir, 'launch', 'localization_launch.py')
         ),
         condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'localization'"])),
-        launch_arguments={'map': map_yaml_file, 'use_sim_time': use_sim_time}.items()
+        launch_arguments={
+            'map': map_yaml_file,
+            'use_sim_time': use_sim_time,
+            'params_file': nav2_params_file,
+            'autostart': 'true'
+        }.items()
+    )
+
+    # 9d. Nav2 Autonomous Navigation (Planner, Controller, BT Navigator, Behaviors)
+    navigation_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(nav2_bringup_dir, 'launch', 'navigation_launch.py')
+        ),
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'localization'"])),
+        launch_arguments={
+            'use_sim_time': use_sim_time,
+            'params_file': nav2_params_file,
+            'autostart': 'true'
+        }.items()
     )
 
     # 9c. Nav2 Costmap Filter (Keep-Out Zones & Virtual Walls)
@@ -349,6 +371,19 @@ def generate_launch_description():
         executable='odom_republisher',
         name='odom_republisher',
         output='screen'
+    )
+
+    # 10c. Depth to 3D Pointcloud Node (for Nav2 3D Obstacle Avoidance)
+    depth_to_pointcloud_node = Node(
+        package='depth_image_proc',
+        executable='point_cloud_xyz_node',
+        name='depth_to_pointcloud_node',
+        output='screen',
+        remappings=[
+            ('image_rect', '/oak/stereo/image_raw'),
+            ('camera_info', '/oak/stereo/camera_info'),
+            ('points', '/oak/points')
+        ]
     )
 
     # 11. Object Detector Node (Semantic Obstacle Detection)
@@ -447,7 +482,7 @@ def generate_launch_description():
         output='screen'
     )
 
-    # 19. Robot Pose Circle & 3-Cone LIDAR FOV Visualizer (RViz)
+    # 19. Robot Pose Circle & LIDAR FOV Visualizer (RViz)
     robot_fov_indicator_node = Node(
         package='hospobot_perception',
         executable='robot_fov_indicator_node',
@@ -455,8 +490,23 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'flip_angles': False,
+            'nav_mode': nav_mode,
             'cone_range': 2.5,
-            'robot_radius': 0.26
+            'robot_radius': 0.2375
+        }]
+    )
+
+    # 20. RViz Nav Visualizer (Current Pose, Goal Pose, Global/Local Paths)
+    nav_visualizer_node = Node(
+        package='hospobot_perception',
+        executable='nav_visualizer_node',
+        name='nav_visualizer_node',
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'localization'"])),
+        parameters=[{
+            'map_frame': 'map',
+            'base_frame': 'base_footprint',
+            'publish_rate': 10.0
         }]
     )
 
@@ -478,6 +528,7 @@ def generate_launch_description():
         slam_node,
         slam_lifecycle_node,
         localization_node,
+        navigation_node,
         filter_mask_server_node,
         costmap_filter_info_server_node,
         lifecycle_manager_costmap_filters,
@@ -486,7 +537,8 @@ def generate_launch_description():
         web_server,
         mapping_web_server,
         camera_node,
-        odom_republisher_node,
+        # odom_republisher_node, # Disabled: VIO odometry disabled, 2D LiDAR ICP odometry handles odom
+        depth_to_pointcloud_node, # 3D Depth Pointcloud for Nav2 Obstacle Avoidance
         # ekf_node, # Disabled: icp_odometry directly broadcasts odom->base_footprint TF
         socket_can_receiver_node,
         socket_can_sender_node,
@@ -494,6 +546,6 @@ def generate_launch_description():
         joy_node,
         teleop_twist_joy_node,
         footprint_publisher_node,
-        robot_fov_indicator_node
+        robot_fov_indicator_node,
+        nav_visualizer_node
     ])
-
