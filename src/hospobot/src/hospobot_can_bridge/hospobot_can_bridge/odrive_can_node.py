@@ -75,7 +75,7 @@ class OdriveCanNode(Node):
         self.declare_parameter('invert_odom_left', True)
         self.declare_parameter('invert_odom_right', False)
         self.declare_parameter('heartbeat_timeout', 2.0)
-        self.declare_parameter('swivel_assist_vel', 0.05)
+        self.declare_parameter('swivel_assist_vel', 0.0)
         self.declare_parameter('left_vel_multiplier', 1.0)
         self.declare_parameter('right_vel_multiplier', 1.0)
         self.declare_parameter('use_usb_left', True)
@@ -273,13 +273,13 @@ class OdriveCanNode(Node):
                     self.left_serial_port = port
                     self.get_logger().info(f"Connected to Left ODrive on {port}")
                     
-                    # Auto-initialize Left ODrive into Closed Loop Velocity mode with matched gains
-                    if not getattr(self, 'left_auto_started', False):
-                        self.send_usb_cmd("sc")
-                        self.send_usb_cmd(f"w axis0.controller.config.vel_gain {self.vel_gain}")
-                        self.send_usb_cmd(f"w axis0.controller.config.vel_integrator_gain {self.vel_integrator_gain}")
-                        self.send_usb_cmd("w axis0.controller.config.control_mode 2")
-                        self.send_usb_cmd("w axis0.controller.config.input_mode 1")
+                    # Initialize Left ODrive into Closed Loop Velocity mode with matched gains
+                    self.send_usb_cmd("sc")
+                    self.send_usb_cmd(f"w axis0.controller.config.vel_gain {self.vel_gain}")
+                    self.send_usb_cmd(f"w axis0.controller.config.vel_integrator_gain {self.vel_integrator_gain}")
+                    self.send_usb_cmd("w axis0.controller.config.control_mode 2")
+                    self.send_usb_cmd("w axis0.controller.config.input_mode 1")
+                    if not getattr(self, 'left_explicit_idle', False):
                         self.send_usb_cmd("w axis0.requested_state 8")
                         self.left_auto_started = True
                         self.get_logger().info(f"Left ODrive (USB) auto-started into CLOSED_LOOP_CONTROL (vel_gain={self.vel_gain}, vel_integrator_gain={self.vel_integrator_gain}).")
@@ -336,7 +336,7 @@ class OdriveCanNode(Node):
         omega = msg.angular.z
 
         # Anti-scrub / Swivel assist for diamond configuration
-        if abs(omega) > 0.05 and abs(v_x) < self.swivel_assist_vel:
+        if self.swivel_assist_vel > 0.0 and abs(omega) > 0.05 and abs(v_x) < self.swivel_assist_vel:
             # Inject a small forward velocity to help casters align
             v_x = self.swivel_assist_vel
 
@@ -640,6 +640,20 @@ class OdriveCanNode(Node):
                         states = {1: "Idle", 3: "Full-Calibration", 8: "Closed-Loop-Velocity"}
                         self.motor_state['left']['state'] = states.get(state_val, f"State-{state_val}")
 
+                        # Maintain CLOSED LOOP CONTROL unless explicitly commanded IDLE (same as CAN motor)
+                        if state_val == 1 and not getattr(self, 'left_explicit_idle', False):
+                            now_ts = time.time()
+                            last_retry = getattr(self, '_left_last_engage_attempt', 0.0)
+                            if now_ts - last_retry > 1.0:
+                                self._left_last_engage_attempt = now_ts
+                                self.get_logger().info('Re-engaging Left motor (USB) into CLOSED LOOP CONTROL...', throttle_duration_sec=2.0)
+                                self.send_usb_cmd("sc")
+                                self.send_usb_cmd(f"w axis0.controller.config.vel_gain {self.vel_gain}")
+                                self.send_usb_cmd(f"w axis0.controller.config.vel_integrator_gain {self.vel_integrator_gain}")
+                                self.send_usb_cmd("w axis0.controller.config.control_mode 2")
+                                self.send_usb_cmd("w axis0.controller.config.input_mode 1")
+                                self.send_usb_cmd("w axis0.requested_state 8")
+
                 # Bus voltage
                 line = self._usb_query(b"r vbus_voltage\n")
                 if line:
@@ -675,17 +689,29 @@ class OdriveCanNode(Node):
         valid_voltages = [v for v in [v_l, v_r] if v > 0.0]
         valid_currents = [i for i in [i_l, i_r] if i >= 0.0]
 
+        avg_volt_val = 0.0
         if valid_voltages:
             avg_volt = sum(valid_voltages) / len(valid_voltages)
+            avg_volt_val = float(avg_volt)
             vm = Float32()
-            vm.data = float(avg_volt)
+            vm.data = avg_volt_val
             self.volt_pub.publish(vm)
 
+        avg_curr_val = 0.0
         if valid_currents:
             avg_curr = sum(valid_currents) / len(valid_currents)
+            avg_curr_val = float(avg_curr)
             cm = Float32()
-            cm.data = float(avg_curr)
+            cm.data = avg_curr_val
             self.curr_pub.publish(cm)
+
+        if avg_volt_val > 0.0:
+            try:
+                with open('/tmp/hospobot_power.json.tmp', 'w') as pf:
+                    json.dump({'voltage': avg_volt_val, 'current': avg_curr_val, 'timestamp': time.time()}, pf)
+                os.replace('/tmp/hospobot_power.json.tmp', '/tmp/hospobot_power.json')
+            except Exception:
+                pass
 
         status_data = {
             'left':  {

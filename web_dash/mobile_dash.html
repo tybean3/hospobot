@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HospoBot Mobile Navigation</title>
+    <script src="https://cdn.jsdelivr.net/npm/roslib/build/roslib.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #060913;
+            --panel-bg: rgba(15, 23, 42, 0.75);
+            --panel-border: rgba(56, 189, 248, 0.15);
+            --primary: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.35);
+            --emerald: #10b981;
+            --emerald-glow: rgba(16, 185, 129, 0.4);
+            --amber: #f59e0b;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+            background-image: 
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(14, 165, 233, 0.18), transparent 70%),
+                radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.12), transparent 50%),
+                linear-gradient(180deg, #060913 0%, #0b1120 100%);
+            position: relative;
+        }
+
+        /* --- TOP STATUS HUD (No top menu bar) --- */
+        .hud-top {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px 4px 12px;
+            z-index: 50;
+            pointer-events: none;
+            gap: 6px;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .hud-badge {
+            pointer-events: auto;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--panel-border);
+            padding: 5px 10px;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            white-space: nowrap;
+        }
+
+        .hud-badge.logo {
+            letter-spacing: 0.5px;
+            color: var(--text-main);
+        }
+
+        .hud-badge.logo span.brand {
+            color: var(--primary);
+            font-weight: 800;
+        }
+
+        .hud-badge.mode-badge {
+            border-color: rgba(56, 189, 248, 0.3);
+            color: var(--text-main);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger);
+            transition: all 0.3s;
+        }
+
+        .status-dot.connected {
+            background: var(--emerald);
+            box-shadow: 0 0 10px var(--emerald);
+        }
+
+        .status-dot.mode-active {
+            background: var(--emerald);
+            box-shadow: 0 0 10px var(--emerald);
+        }
+
+        .status-dot.mode-idle {
+            background: #64748b;
+        }
+
+        /* --- INTERACTIVE MAP CONTAINER --- */
+        .map-viewport {
+            width: 100%;
+            max-width: 480px;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 10px;
+            position: relative;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .map-wrapper {
+            position: relative;
+            height: 100%;
+            width: auto;
+            aspect-ratio: 512 / 1024;
+            max-width: 100%;
+            background: rgba(10, 16, 30, 0.6);
+            border-radius: 16px;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            box-shadow: 
+                0 0 30px rgba(14, 165, 233, 0.08),
+                0 15px 30px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+
+        .map-bg-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            pointer-events: none;
+            filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.2));
+        }
+
+        /* --- CLICKABLE ROOM HOTSPOTS --- */
+        .hotspot-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: auto;
+        }
+
+        .room-hotspot {
+            position: absolute;
+            cursor: pointer;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(16, 185, 129, 0.04);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .room-hotspot:hover {
+            background: rgba(16, 185, 129, 0.25);
+            border-color: var(--emerald);
+            box-shadow: 0 0 16px var(--emerald-glow), inset 0 0 8px rgba(16, 185, 129, 0.3);
+            transform: scale(1.05);
+            z-index: 30;
+        }
+
+        .room-hotspot:active {
+            transform: scale(0.95);
+        }
+
+        .room-hotspot.active {
+            background: rgba(56, 189, 248, 0.35);
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow), inset 0 0 10px rgba(56, 189, 248, 0.4);
+            animation: pulse-beacon 1.6s infinite ease-in-out;
+            z-index: 40;
+        }
+
+        @keyframes pulse-beacon {
+            0% {
+                box-shadow: 0 0 6px rgba(56, 189, 248, 0.6), inset 0 0 6px rgba(56, 189, 248, 0.3);
+                border-color: var(--primary);
+            }
+            50% {
+                box-shadow: 0 0 24px rgba(56, 189, 248, 1), inset 0 0 14px rgba(56, 189, 248, 0.6);
+                border-color: #ffffff;
+            }
+            100% {
+                box-shadow: 0 0 6px rgba(56, 189, 248, 0.6), inset 0 0 6px rgba(56, 189, 248, 0.3);
+                border-color: var(--primary);
+            }
+        }
+
+        .beacon-pin {
+            display: none;
+            position: absolute;
+            top: -24px;
+            font-size: 16px;
+            animation: bounce-pin 0.8s infinite alternate ease-in-out;
+        }
+
+        .room-hotspot.active .beacon-pin {
+            display: block;
+        }
+
+        /* Room number label inside hotspot */
+        .hotspot-label {
+            position: absolute;
+            font-size: clamp(7px, 1.8vw, 10px);
+            font-weight: 700;
+            color: #a7f3d0;
+            letter-spacing: -0.3px;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            white-space: nowrap;
+            pointer-events: none;
+            line-height: 1;
+        }
+
+        .room-hotspot.active .hotspot-label {
+            color: #ffffff;
+        }
+
+        @keyframes bounce-pin {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-5px); }
+        }
+
+        /* --- BOTTOM CONTROL DRAWER WITH LAUNCH MODES --- */
+        .bottom-drawer {
+            width: 100%;
+            max-width: 480px;
+            background: rgba(10, 15, 28, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--panel-border);
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            padding: 10px 14px 12px 14px;
+            z-index: 50;
+            box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        /* Mode Switcher Buttons */
+        .mode-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .mode-btn {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            padding: 8px 4px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .mode-btn span.icon {
+            font-size: 1.1rem;
+        }
+
+        .mode-btn:active {
+            transform: scale(0.95);
+        }
+
+        .mode-btn.active.autonav {
+            background: rgba(16, 185, 129, 0.25);
+            border-color: var(--emerald);
+            color: #34d399;
+            box-shadow: 0 0 14px var(--emerald-glow);
+        }
+
+        .mode-btn.active.mapping {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: 0 0 14px var(--primary-glow);
+        }
+
+        .mode-btn.active.driving {
+            background: rgba(245, 158, 11, 0.25);
+            border-color: var(--amber);
+            color: var(--amber);
+            box-shadow: 0 0 14px rgba(245, 158, 11, 0.4);
+        }
+
+        .mode-btn.stop {
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        .mode-btn.stop:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .drawer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .drawer-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .active-goal-tag {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--primary);
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 2px 8px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .active-goal-tag.show {
+            display: inline-block;
+        }
+
+        /* Quick chips horizontal scroll */
+        .chips-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+            scrollbar-width: none;
+        }
+
+        .chips-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .room-chip {
+            flex-shrink: 0;
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-main);
+            padding: 7px 12px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .room-chip:active {
+            transform: scale(0.95);
+        }
+
+        .room-chip.active {
+            background: var(--primary);
+            color: #041226;
+            font-weight: 800;
+            border-color: var(--primary);
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+
+        /* --- TOAST NOTIFICATION --- */
+        .toast {
+            position: fixed;
+            top: 55px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--primary);
+            color: var(--text-main);
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px var(--primary-glow);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Minimal Floating HUD (No top menu bar) -->
+    <div class="hud-top">
+        <div class="hud-badge logo">
+            <span>🤖</span> <span class="brand">HospoBot</span>
+        </div>
+        <div class="hud-badge mode-badge" id="hud-mode-pill">
+            <span class="status-dot mode-idle" id="hud-mode-dot"></span>
+            <span id="hud-mode-text">STANDBY</span>
+        </div>
+        <div class="hud-badge" id="hud-conn-badge">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-text">Connecting</span>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span id="toast-icon">📍</span>
+        <span id="toast-msg">Calling robot...</span>
+    </div>
+
+    <!-- Map Viewport -->
+    <div class="map-viewport">
+        <div class="map-wrapper">
+            <img src="ui_map_dark.png" alt="Hospital Layout" class="map-bg-img" id="map-img">
+            <div class="hotspot-overlay" id="hotspot-overlay">
+                <!-- Clickable Room Indicators Injected Dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Control Drawer (Modes + Room Selector) -->
+    <div class="bottom-drawer">
+        <!-- Robot Launch Modes -->
+        <div class="mode-row">
+            <button class="mode-btn autonav" id="btn-mode-loc" onclick="launchRobotMode('localization')">
+                <span class="icon">🚀</span>
+                <span>Auto Nav</span>
+            </button>
+            <button class="mode-btn mapping" id="btn-mode-map" onclick="launchRobotMode('mapping')">
+                <span class="icon">🗺️</span>
+                <span>Mapping</span>
+            </button>
+            <button class="mode-btn driving" id="btn-mode-drive" onclick="launchRobotMode('driving')">
+                <span class="icon">🎮</span>
+                <span>Driving</span>
+            </button>
+            <button class="mode-btn stop" id="btn-mode-stop" onclick="launchRobotMode('idle')">
+                <span class="icon">🛑</span>
+                <span>Stop</span>
+            </button>
+        </div>
+
+        <div class="drawer-header">
+            <div class="drawer-title">
+                <span>Touch Map or Select Room</span>
+            </div>
+            <div class="active-goal-tag" id="active-goal-badge">
+                Goal: <span id="active-goal-name">None</span>
+            </div>
+        </div>
+        <div class="chips-scroll" id="chips-container">
+            <!-- Room chips injected here -->
+        </div>
+    </div>
+
+    <script>
+        // Setup ROS connection
+        const ros = new ROSLIB.Ros({
+            url: 'ws://' + window.location.hostname + ':9090'
+        });
+
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const hudModeText = document.getElementById('hud-mode-text');
+        const hudModeDot = document.getElementById('hud-mode-dot');
+        const activeBadge = document.getElementById('active-goal-badge');
+        const activeGoalName = document.getElementById('active-goal-name');
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toast-msg');
+        let toastTimer = null;
+        let currentMode = "idle";
+
+        ros.on('connection', () => {
+            statusDot.classList.add('connected');
+            statusText.innerText = 'Online';
+        });
+
+        ros.on('error', () => {
+            statusDot.classList.remove('connected');
+            statusText.innerText = 'Offline';
+        });
+
+        ros.on('close', () => {
+            statusDot.classList.remove('connected');
+            statusText.innerText = 'Offline';
+        });
+
+        // Mode Publisher & Subscriber
+        const setModePub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/hospobot/set_mode',
+            messageType: 'std_msgs/String'
+        });
+
+        const currentModeSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/hospobot/current_mode',
+            messageType: 'std_msgs/String'
+        });
+
+        const modeStatusSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/hospobot/mode_status',
+            messageType: 'std_msgs/String'
+        });
+
+        currentModeSub.subscribe((msg) => {
+            let mode = msg.data;
+            try {
+                const parsed = JSON.parse(msg.data);
+                if (parsed.mode) mode = parsed.mode;
+            } catch(e) {}
+            handleModeUpdate(mode);
+        });
+
+        // Also subscribe to rich mode_status for detailed localization status
+        modeStatusSub.subscribe((msg) => {
+            try {
+                const parsed = JSON.parse(msg.data);
+                if (parsed.mode) handleModeUpdate(parsed.mode);
+                // Show localized notification on toast
+                if (parsed.state && parsed.state.includes('LOCALIZED') && currentMode === 'localization') {
+                    showToast('Robot localized! Ready to navigate.', '✅');
+                }
+            } catch(e) {}
+        });
+
+
+        function handleModeUpdate(mode) {
+            currentMode = mode.toLowerCase();
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+
+            if (currentMode === 'localization') {
+                hudModeText.innerText = 'AUTO NAV';
+                hudModeDot.className = 'status-dot mode-active';
+                const btn = document.getElementById('btn-mode-loc');
+                if (btn) btn.classList.add('active');
+            } else if (currentMode === 'mapping') {
+                hudModeText.innerText = 'MAPPING';
+                hudModeDot.className = 'status-dot mode-active';
+                const btn = document.getElementById('btn-mode-map');
+                if (btn) btn.classList.add('active');
+            } else if (currentMode === 'driving') {
+                hudModeText.innerText = 'DRIVING';
+                hudModeDot.className = 'status-dot mode-active';
+                const btn = document.getElementById('btn-mode-drive');
+                if (btn) btn.classList.add('active');
+            } else if (currentMode === 'transitioning') {
+                hudModeText.innerText = 'STARTING...';
+                hudModeDot.className = 'status-dot';
+            } else {
+                hudModeText.innerText = 'STANDBY';
+                hudModeDot.className = 'status-dot mode-idle';
+            }
+        }
+
+        function launchRobotMode(mode) {
+            setModePub.publish(new ROSLIB.Message({ data: mode }));
+            if (mode === 'localization') {
+                showToast('Launching Auto Nav & Auto-Localizing...', '🚀');
+            } else if (mode === 'mapping') {
+                showToast('Launching Mapping Stack...', '🗺️');
+            } else if (mode === 'driving') {
+                showToast('Launching Driving Mode...', '🎮');
+            } else {
+                showToast('Stopping Robot Hardware Stack...', '🛑');
+            }
+        }
+        const setRobotMode = launchRobotMode;
+
+        const goalPub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/goal_pose',
+            messageType: 'geometry_msgs/PoseStamped'
+        });
+
+        function showToast(msg, icon = '📍') {
+            document.getElementById('toast-icon').innerText = icon;
+            toastMsg.innerText = msg;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        let roomData = {};
+        let currentTarget = null;
+
+        function callRobotToRoom(roomName) {
+            const room = roomData[roomName];
+            if (!room) return;
+
+            // If robot is in idle/standby, automatically start Auto Nav
+            if (currentMode !== 'localization') {
+                launchRobotMode('localization');
+            }
+
+            currentTarget = roomName;
+
+            // Highlight hotspot
+            document.querySelectorAll('.room-hotspot').forEach(el => {
+                if (el.dataset.room === roomName) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+
+            // Highlight chip
+            document.querySelectorAll('.room-chip').forEach(el => {
+                if (el.dataset.room === roomName) {
+                    el.classList.add('active');
+                    el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+
+            // Update badge
+            activeGoalName.innerText = roomName;
+            activeBadge.classList.add('show');
+
+            // Send Nav2 goal pose
+            const theta = room.theta || 0.0;
+            const qz = Math.sin(theta / 2.0);
+            const qw = Math.cos(theta / 2.0);
+
+            const poseMsg = new ROSLIB.Message({
+                header: {
+                    frame_id: 'map'
+                },
+                pose: {
+                    position: {
+                        x: room.x || 0.0,
+                        y: room.y || 0.0,
+                        z: 0.0
+                    },
+                    orientation: {
+                        x: 0.0,
+                        y: 0.0,
+                        z: qz,
+                        w: qw
+                    }
+                }
+            });
+
+            goalPub.publish(poseMsg);
+            showToast(`Calling robot to ${roomName}...`, '🚀');
+
+            if (navigator.vibrate) {
+                navigator.vibrate([40, 30, 40]);
+            }
+        }
+
+        // Fetch rooms.json
+        fetch('rooms.json')
+            .then(res => res.json())
+            .then(data => {
+                roomData = data;
+                const overlay = document.getElementById('hotspot-overlay');
+                const chips = document.getElementById('chips-container');
+
+                for (const [roomName, info] of Object.entries(roomData)) {
+                    // Create Hotspot on Map
+                    const ui = info.ui || { left: 0, top: 0, width: 10, height: 4 };
+                    const hotspot = document.createElement('div');
+                    hotspot.className = 'room-hotspot';
+                    hotspot.dataset.room = roomName;
+                    hotspot.title = `Call HospoBot to ${roomName}`;
+
+                    hotspot.style.left = `${ui.left}%`;
+                    hotspot.style.top = `${ui.top}%`;
+                    hotspot.style.width = `${ui.width}%`;
+                    hotspot.style.height = `${ui.height}%`;
+
+                    // Visible room number label
+                    const label = document.createElement('span');
+                    label.className = 'hotspot-label';
+                    label.innerText = roomName;
+                    hotspot.appendChild(label);
+
+                    const pin = document.createElement('span');
+                    pin.className = 'beacon-pin';
+                    pin.innerText = '📍';
+                    hotspot.appendChild(pin);
+
+                    hotspot.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        callRobotToRoom(roomName);
+                    });
+
+                    overlay.appendChild(hotspot);
+
+                    // Create Chip in bottom drawer
+                    const chip = document.createElement('button');
+                    chip.className = 'room-chip';
+                    chip.dataset.room = roomName;
+                    chip.innerText = roomName;
+                    chip.addEventListener('click', () => {
+                        callRobotToRoom(roomName);
+                    });
+                    chips.appendChild(chip);
+                }
+            })
+            .catch(err => {
+                console.error("Failed to load rooms.json", err);
+                showToast("Failed to load destinations", "⚠️");
+            });
+    </script>
+</body>
+</html>

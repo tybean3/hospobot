@@ -77,7 +77,7 @@ class DiagnosticsNode(Node):
             'pipelines': {
                 'driving': 'odesc_drive_node' in nodes and 'cmd_vel_mux' in nodes,
                 'nav2': 'nav2_manager_node' in nodes or 'bt_navigator' in nodes,
-                'semantic': 'oakd_yolo_node' in nodes or 'semantic_tracker_node' in nodes,
+                'semantic': any(n in nodes for n in ['oak', 'oak_container', 'oakd_yolo_node', 'semantic_tracker_node']),
                 'comms': 'system_can_bridge' in nodes and 'rosbridge_websocket' in nodes
             },
             'nodes': {
@@ -90,7 +90,8 @@ class DiagnosticsNode(Node):
                 'node_mux': 'FUNCTIONAL' if 'cmd_vel_mux' in nodes else 'OFFLINE',
                 'node_diag': 'FUNCTIONAL',
                 'node_rsp': 'FUNCTIONAL' if 'robot_state_publisher' in nodes else 'OFFLINE',
-                'node_bridge': 'FUNCTIONAL' if 'rosbridge_websocket' in nodes else 'OFFLINE'
+                'node_bridge': 'FUNCTIONAL' if 'rosbridge_websocket' in nodes else 'OFFLINE',
+                'node_camera': 'FUNCTIONAL' if any(n in nodes for n in ['oak', 'oak_container', 'oakd_yolo_node']) else 'OFFLINE'
             },
             'topics': {
                 'topic_scan': 'FUNCTIONAL' if '/scan' in topics else 'OFFLINE',

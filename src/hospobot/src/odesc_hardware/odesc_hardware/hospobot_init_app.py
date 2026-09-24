@@ -18,6 +18,30 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtGui import QFont, QPalette, QColor
 import can
 import shutil
+import json
+
+# If ROS environment is not sourced, self-bootstrap via bash to guarantee rclpy & ROS 2 libraries
+if "ROS_DISTRO" not in os.environ:
+    os.environ["ROS_DOMAIN_ID"] = "42"
+    bootstrap_cmd = (
+        "source /opt/ros/jazzy/setup.bash 2>/dev/null && "
+        "source /home/hospobot/hospobot_ws/install/setup.bash 2>/dev/null && "
+        "export ROS_DOMAIN_ID=42 && "
+        f"exec /home/hospobot/hospobot_ws/venv/bin/python3 -u {os.path.abspath(__file__)} " + " ".join(f'"{a}"' for a in sys.argv[1:])
+    )
+    os.execv("/bin/bash", ["/bin/bash", "-c", bootstrap_cmd])
+
+if "ROS_DOMAIN_ID" not in os.environ:
+    os.environ["ROS_DOMAIN_ID"] = "42"
+
+try:
+    import rclpy
+    from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
+    from std_msgs.msg import String
+    from geometry_msgs.msg import PoseWithCovarianceStamped
+    HAVE_ROS = True
+except ImportError:
+    HAVE_ROS = False
 
 # ──────────────────────────────────────────────────────────────────────────────
 # ODrive serial helper (O_NONBLOCK, same as before)
@@ -89,8 +113,9 @@ def find_odrive_port() -> str:
 class PowerPollThread(QThread):
     power_updated = pyqtSignal(float, float)   # voltage, current
 
-    def __init__(self):
+    def __init__(self, app=None):
         super().__init__()
+        self.app = app
         self._running = True
         self._last_volt = 0.0
         self._last_curr = 0.0
@@ -98,7 +123,9 @@ class PowerPollThread(QThread):
     def run(self):
         while self._running:
             volt, curr = self._try_ros_read()
-            if volt <= 0.0:
+            # Do NOT touch serial port if launch process is active, to prevent bus collision with odrive_can_node
+            is_launch_active = bool(self.app and self.app._launch_proc and self.app._launch_proc.poll() is None)
+            if volt <= 0.0 and not is_launch_active:
                 volt, curr = self._try_serial_read()
             if volt > 0.0:
                 self._last_volt = volt
@@ -174,27 +201,20 @@ class PowerPollThread(QThread):
         return volt, curr
 
     def _try_ros_read(self):
-        """Read from ROS topics (works once odrive_can_node or power_monitor is running)."""
+        """Read power stats directly from shared cache written by odrive_can_node.
+        Avoids spawning ros2 CLI processes that flood DDS network discovery."""
         volt, curr = 0.0, 0.0
-        env = dict(os.environ)
-        env['ROS_DOMAIN_ID'] = '0'
-        for topic, is_volt in [('/sensors/bus_voltage', True), ('/sensors/bus_current', False)]:
-            try:
-                res = subprocess.run(
-                    ['bash', '-c',
-                     f'source /opt/ros/jazzy/setup.bash && '
-                     f'source /home/hospobot/hospobot_ws/install/setup.bash && '
-                     f'timeout 1.2 ros2 topic echo --once --no-arr {topic} 2>/dev/null'
-                     f' | grep "^data:" | head -1'],
-                    capture_output=True, text=True, timeout=2.5, env=env
-                )
-                line = res.stdout.strip()
-                if line.startswith('data:'):
-                    val = float(line.split(':', 1)[1].strip())
-                    if is_volt: volt = val
-                    else: curr = val
-            except Exception:
-                pass
+        try:
+            power_file = '/tmp/hospobot_power.json'
+            if os.path.exists(power_file):
+                with open(power_file, 'r') as pf:
+                    data = json.load(pf)
+                # Ensure data is recent (within 5 seconds)
+                if time.time() - data.get('timestamp', 0) < 5.0:
+                    volt = float(data.get('voltage', 0.0))
+                    curr = float(data.get('current', 0.0))
+        except Exception:
+            pass
         return volt, curr
 
     def stop(self):
@@ -203,9 +223,157 @@ class PowerPollThread(QThread):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# ROS 2 Remote Web Synchronization Thread
+# Listens for remote launch commands (/hospobot/set_mode & /hospobot/mode_cmd)
+# Broadcasts active robot state (/hospobot/current_mode & /hospobot/mode_status)
+# Auto-localizes AMCL upon launching Auto Nav mode
+# ──────────────────────────────────────────────────────────────────────────────
+class DesktopRosSyncThread(QThread):
+    mode_command_received = pyqtSignal(str, str)  # (mode, map_name)
+    localized_signal = pyqtSignal(float, float, float)  # (x, y, yaw)
+
+    def __init__(self, main_win=None):
+        super().__init__()
+        self.main_win = main_win
+        self._running = True
+        self._node = None
+        self._status_pub = None
+        self._status_pub_latched = None
+        self._mode_status_pub = None
+        self._initpose_pub = None
+        self._initpose_pub_volatile = None
+
+    def run(self):
+        with open("/tmp/debug_sync.log", "a") as f:
+            f.write(f"DesktopRosSyncThread.run started! HAVE_ROS={HAVE_ROS}\n")
+        if not HAVE_ROS:
+            return
+
+        try:
+            if not rclpy.ok():
+                rclpy.init(args=None)
+            self._node = rclpy.create_node('hospobot_desktop_sync')
+            with open("/tmp/debug_sync.log", "a") as f:
+                f.write(f"Node hospobot_desktop_sync created!\n")
+
+            qos_latched = QoSProfile(
+                depth=1,
+                durability=DurabilityPolicy.TRANSIENT_LOCAL,
+                reliability=ReliabilityPolicy.RELIABLE
+            )
+
+            self._status_pub = self._node.create_publisher(String, '/hospobot/current_mode', 10)
+            self._status_pub_latched = self._node.create_publisher(String, '/hospobot/current_mode_latched', qos_latched)
+            self._mode_status_pub = self._node.create_publisher(String, '/hospobot/mode_status', qos_latched)
+            self._initpose_pub = self._node.create_publisher(PoseWithCovarianceStamped, '/initialpose', qos_latched)
+            self._initpose_pub_volatile = self._node.create_publisher(PoseWithCovarianceStamped, '/initialpose', 10)
+
+            def _on_cmd(msg):
+                try:
+                    payload = json.loads(msg.data)
+                    mode = str(payload.get('mode', '')).strip().lower()
+                    map_name = str(payload.get('map', '')).strip()
+                except Exception:
+                    mode = msg.data.strip().lower()
+                    map_name = ''
+                self.mode_command_received.emit(mode, map_name)
+
+            self._node.create_subscription(String, '/hospobot/set_mode', _on_cmd, 10)
+            self._node.create_subscription(String, '/hospobot/mode_cmd', _on_cmd, 10)
+
+            def _on_amcl_pose(msg):
+                try:
+                    px = msg.pose.pose.position.x
+                    py = msg.pose.pose.position.y
+                    qz = msg.pose.pose.orientation.z
+                    qw = msg.pose.pose.orientation.w
+                    yaw = 2.0 * math.atan2(qz, qw)
+                    self.localized_signal.emit(px, py, yaw)
+                except Exception:
+                    pass
+
+            self._node.create_subscription(PoseWithCovarianceStamped, '/amcl_pose', _on_amcl_pose, 10)
+
+            while self._running and rclpy.ok():
+                rclpy.spin_once(self._node, timeout_sec=0.1)
+        except Exception as e:
+            print(f"[DesktopRosSync] Error: {e}")
+        finally:
+            if self._node:
+                try:
+                    self._node.destroy_node()
+                except Exception:
+                    pass
+
+    def publish_status(self, mode: str, map_name: str, state_text: str, motors: bool):
+        if not self._node:
+            return
+        mode_val = mode if mode else "idle"
+        # 1. Plain string for simple subscribers
+        msg_simple = String()
+        msg_simple.data = mode_val
+        try:
+            if self._status_pub:
+                self._status_pub.publish(msg_simple)
+            if self._status_pub_latched:
+                self._status_pub_latched.publish(msg_simple)
+        except Exception:
+            pass
+
+        # 2. Rich JSON status
+        status_dict = {
+            "mode": mode_val,
+            "map": map_name if map_name else "Building6-Floor1",
+            "state": state_text,
+            "motors": motors,
+            "timestamp": time.time()
+        }
+        msg_rich = String()
+        msg_rich.data = json.dumps(status_dict)
+        try:
+            if self._mode_status_pub:
+                self._mode_status_pub.publish(msg_rich)
+        except Exception:
+            pass
+
+    def pulse_initial_pose(self):
+        """Pushes initial pose (0, 0, 0) to AMCL on /initialpose with both latched and volatile QoS."""
+        if not self._node:
+            return
+        msg = PoseWithCovarianceStamped()
+        msg.header.frame_id = 'map'
+        msg.header.stamp = self._node.get_clock().now().to_msg()
+        msg.pose.pose.position.x = 0.0
+        msg.pose.pose.position.y = 0.0
+        msg.pose.pose.position.z = 0.0
+        msg.pose.pose.orientation.x = 0.0
+        msg.pose.pose.orientation.y = 0.0
+        msg.pose.pose.orientation.z = 0.0
+        msg.pose.pose.orientation.w = 1.0
+        cov = [0.0] * 36
+        cov[0] = 0.25      # X covariance (0.5m)
+        cov[7] = 0.25      # Y covariance (0.5m)
+        cov[35] = 0.0685   # Yaw covariance (~15 deg)
+        msg.pose.covariance = cov
+        try:
+            if self._initpose_pub:
+                self._initpose_pub.publish(msg)
+            if self._initpose_pub_volatile:
+                self._initpose_pub_volatile.publish(msg)
+            print("[DesktopRosSync] Auto-localization: published /initialpose (x=0, y=0, yaw=0)")
+        except Exception as e:
+            print(f"[DesktopRosSync] Error publishing initial pose: {e}")
+
+    def stop(self):
+        self._running = False
+        self.wait(1000)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Worker thread (hardware checks, index search, drive calibration)
 # ──────────────────────────────────────────────────────────────────────────────
 class WorkerThread(QThread):
+
     progress        = pyqtSignal(str, str, int)
     finished_checks = pyqtSignal(bool)
     finished_search = pyqtSignal(bool, str)
@@ -908,7 +1076,7 @@ class MainWindow(QMainWindow):
         self.page_idle          = QWidget(); self.setup_idle_page();         self.stack.addWidget(self.page_idle)
 
         # Power polling (direct serial + ROS fallback)
-        self._power_thread = PowerPollThread()
+        self._power_thread = PowerPollThread(self)
         self._power_thread.power_updated.connect(self._on_power_update)
         self._power_thread.start()
 
@@ -920,8 +1088,26 @@ class MainWindow(QMainWindow):
         self._vpn_timer.start()
         QTimer.singleShot(300, self._check_wireguard_status)
 
+        # ROS 2 Remote Synchronization Thread
+        self._ros_sync = None
+        if HAVE_ROS:
+            try:
+                self._ros_sync = DesktopRosSyncThread(self)
+                self._ros_sync.mode_command_received.connect(self._on_remote_mode_cmd)
+                self._ros_sync.localized_signal.connect(self._on_robot_localized)
+                self._ros_sync.start()
+            except Exception as e:
+                print(f"Warning initializing DesktopRosSyncThread: {e}")
+
+        # Periodic status broadcast (syncs with web dashboard)
+        self._status_broadcast_timer = QTimer(self)
+        self._status_broadcast_timer.setInterval(1000)
+        self._status_broadcast_timer.timeout.connect(self._broadcast_mode_status)
+        self._status_broadcast_timer.start()
+
         self.showFullScreen()
         QTimer.singleShot(1000, self.start_hardware_check)
+
 
     # ── Header bar ─────────────────────────────────────────────────────────────
     def _make_header_bar(self):
@@ -1780,6 +1966,121 @@ class MainWindow(QMainWindow):
     def _go_to_launch(self):
         self.stack.setCurrentWidget(self.page_launch)
 
+    def _terminate_launch_proc(self):
+        """Cleanly and reliably terminate active launch process group and any lingering launch nodes."""
+        if self._launch_proc:
+            proc = self._launch_proc
+            self._launch_proc = None
+            try:
+                pgid = os.getpgid(proc.pid)
+                os.killpg(pgid, signal.SIGINT)
+            except Exception:
+                pass
+
+        def _cleanup_lingering():
+            try:
+                subprocess.run(["pkill", "-2", "-f", "ros2 launch hospobot_bringup hospobot_launch.py"], check=False)
+            except Exception:
+                pass
+
+        def _force_cleanup():
+            targets = [
+                "hospobot_launch.py",
+                "odrive_can_node",
+                "cmd_vel_mux",
+                "diagnostics_node",
+                "sllidar_node",
+                "laser_filter_node",
+                "system_can_bridge",
+                "footprint_publisher_node",
+                "robot_fov_indicator_node",
+                "nav_visualizer_node",
+                "lifecycle_manager_navigation",
+                "lifecycle_manager_localization",
+                "lifecycle_manager_costmap_filters",
+                "amcl",
+                "map_server",
+                "controller_server",
+                "planner_server",
+                "bt_navigator",
+                "behavior_server",
+                "smoother_server",
+                "velocity_smoother"
+            ]
+            pattern = "|".join(targets)
+            try:
+                subprocess.run(["pkill", "-9", "-f", f"({pattern})"], check=False)
+            except Exception:
+                pass
+            try:
+                for f in glob.glob("/dev/shm/fastrtps_*") + glob.glob("/dev/shm/sem.fastrtps_*"):
+                    try: os.remove(f)
+                    except OSError: pass
+            except Exception:
+                pass
+
+        QTimer.singleShot(400, _cleanup_lingering)
+        QTimer.singleShot(2500, _force_cleanup)
+
+    def _broadcast_mode_status(self):
+        """Broadcasts current robot mode and state to web dashboard via ROS 2."""
+        if not getattr(self, '_ros_sync', None):
+            return
+        state_text = self.lbl_idle_status.text() if hasattr(self, 'lbl_idle_status') else "IDLE"
+        self._ros_sync.publish_status(
+            mode=getattr(self, '_current_nav_mode', '') or "idle",
+            map_name=getattr(self, '_active_loaded_map', '') or getattr(self, '_selected_map_name', '') or "Building6-Floor1",
+            state_text=state_text,
+            motors=getattr(self, '_motors_engaged', False)
+        )
+
+    def _trigger_auto_localize(self):
+        """Broadcasts initial pose to AMCL when Auto Nav mode is running."""
+        if self._current_nav_mode == "localization" and getattr(self, '_ros_sync', None):
+            self._ros_sync.pulse_initial_pose()
+
+    def _on_robot_localized(self, x: float, y: float, yaw: float):
+        """Called when AMCL reports valid pose on /amcl_pose."""
+        if self._current_nav_mode == "localization" and not getattr(self, '_localized', False):
+            self._localized = True
+            map_name = getattr(self, '_active_loaded_map', '') or getattr(self, '_selected_map_name', '') or "Building6-Floor1"
+            self.lbl_idle_status.setText(f"● NAV READY - LOCALIZED ({map_name})")
+            self.lbl_idle_status.setStyleSheet("color: #00e676;")
+            self._broadcast_mode_status()
+            print(f"[Desktop App] AMCL Localization Confirmed! Robot at x={x:.2f}, y={y:.2f}, yaw={yaw:.2f} rad")
+
+    def _on_remote_mode_cmd(self, mode: str, map_name: str):
+        """Handles remote launch commands received from the web dashboard."""
+        mode = mode.lower().strip()
+        target_map = map_name.strip() if map_name.strip() else (self._selected_map_name or "Building6-Floor1")
+        print(f"[Desktop App] Remote command received: mode='{mode}', map='{target_map}'")
+
+        if mode in ["localization", "autonav", "auto_nav", "nav"]:
+            if self._current_nav_mode == "localization":
+                return  # Already running, ignore duplicate command
+            self._localized = False  # Reset localization state on mode switch
+            self._terminate_launch_proc()
+            self._selected_map_name = target_map
+            QTimer.singleShot(1500, lambda: self.launch_ros("localization", target_map))
+
+        elif mode in ["mapping", "map"]:
+            if self._current_nav_mode == "mapping":
+                return
+            self._localized = False
+            self._terminate_launch_proc()
+            self._selected_map_name = target_map
+            QTimer.singleShot(1500, lambda: self.launch_ros("mapping", target_map))
+
+        elif mode in ["driving", "drive"]:
+            if self._current_nav_mode == "driving":
+                return
+            self._localized = False
+            self._terminate_launch_proc()
+            QTimer.singleShot(1500, lambda: self.launch_ros("driving"))
+
+        elif mode in ["idle", "stop", "exit"]:
+            self._exit_launch_mode()
+
     def launch_ros(self, mode: str, map_name: str = ""):
         self._current_nav_mode = mode
         self._active_loaded_map = map_name
@@ -1801,7 +2102,14 @@ class MainWindow(QMainWindow):
             self.lbl_idle_status.setText("● DRIVING MODE READY")
             self.lbl_idle_status.setStyleSheet("color: #ffb74d;")
 
-        QTimer.singleShot(1500, lambda: self._do_launch_ros(mode, map_name))
+        self._broadcast_mode_status()
+        QTimer.singleShot(1000, lambda: self._do_launch_ros(mode, map_name))
+
+        # Automatically localise on launching Auto Nav mode (no RViz 2D Pose Estimate needed)
+        if mode == "localization":
+            self._localized = False
+            for delay in [3000, 4500, 6000, 7500, 9000, 11000]:
+                QTimer.singleShot(delay, self._trigger_auto_localize)
 
     def _do_launch_ros(self, mode: str, map_name: str = ""):
         active_db = "/home/hospobot/hospobot_ws/.active_mapping.db"
@@ -1823,13 +2131,14 @@ class MainWindow(QMainWindow):
         map_param = f" map:={map_name}" if map_name and mode != "driving" else ""
         domain_id = os.environ.get("ROS_DOMAIN_ID", "42")
         launch_cmd = (
-            f"bash -c 'source /opt/ros/jazzy/setup.bash && "
+            f"source /opt/ros/jazzy/setup.bash && "
             f"source /home/hospobot/hospobot_ws/install/setup.bash && "
             f"export ROS_DOMAIN_ID={domain_id} && "
-            f"ros2 launch hospobot_bringup hospobot_launch.py nav_mode:={mode}{map_param}'"
+            f"exec ros2 launch hospobot_bringup hospobot_launch.py nav_mode:={mode}{map_param}"
         )
+
         self._launch_proc = subprocess.Popen(
-            launch_cmd, shell=True,
+            ['/bin/bash', '-c', launch_cmd],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             preexec_fn=os.setsid
         )
@@ -1838,17 +2147,11 @@ class MainWindow(QMainWindow):
         """Kill launch stack non-blocking, then return to mode selection."""
         self.btn_finish_mapping.hide()
         self._active_loaded_map = ""
-        self._current_nav_mode = ""
-        if self._launch_proc and self._launch_proc.poll() is None:
-            try:
-                os.killpg(os.getpgid(self._launch_proc.pid), signal.SIGTERM)
-            except Exception:
-                try:
-                    self._launch_proc.terminate()
-                except Exception:
-                    pass
-        self._launch_proc = None
+        self._current_nav_mode = "idle"
+        self._localized = False  # Reset localization state on stop
+        self._terminate_launch_proc()
         self.stack.setCurrentWidget(self.page_launch)
+        self._broadcast_mode_status()
         # Give processes time to die before restarting power monitor
         QTimer.singleShot(3000, self._start_power_monitor)
 
@@ -1891,16 +2194,19 @@ class MainWindow(QMainWindow):
         self._motors_engaged = not self._motors_engaged
         state_str = "CL-VEL" if self._motors_engaged else "IDLE"
         env = dict(os.environ)
-        env['ROS_DOMAIN_ID'] = '0'
+        domain_id = os.environ.get("ROS_DOMAIN_ID", "42")
+        env['ROS_DOMAIN_ID'] = domain_id
         for topic in ['/odesc_hardware/state_left', '/odesc_hardware/state_right']:
             subprocess.Popen(
                 ['bash', '-c',
                  f'source /opt/ros/jazzy/setup.bash && '
                  f'source /home/hospobot/hospobot_ws/install/setup.bash && '
+                 f'export ROS_DOMAIN_ID={domain_id} && '
                  f"ros2 topic pub --once {topic} std_msgs/String \"{{data: '{state_str}'}}\""],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
             )
         self._style_motors_btn(self._motors_engaged)
+        self._broadcast_mode_status()
 
     def _style_motors_btn(self, engaged: bool):
         self._motors_engaged = engaged
@@ -1924,10 +2230,12 @@ class MainWindow(QMainWindow):
         if self._power_monitor_proc and self._power_monitor_proc.poll() is None:
             return
         env = dict(os.environ)
-        env['ROS_DOMAIN_ID'] = '0'
+        domain_id = os.environ.get("ROS_DOMAIN_ID", "42")
+        env['ROS_DOMAIN_ID'] = domain_id
         cmd = (
             "source /opt/ros/jazzy/setup.bash && "
             "source /home/hospobot/hospobot_ws/install/setup.bash && "
+            f"export ROS_DOMAIN_ID={domain_id} && "
             "ros2 run hospobot_can_bridge power_monitor"
         )
         self._power_monitor_proc = subprocess.Popen(
@@ -1938,12 +2246,9 @@ class MainWindow(QMainWindow):
         )
 
     def _stop_power_monitor(self):
-        """Non-blocking kill — never call time.sleep() here (GUI thread).
-        Uses proc.terminate() (SIGTERM to one process) not os.killpg()
-        because the power_monitor runs in its own session via os.setsid."""
+        """Non-blocking kill — never call time.sleep() here (GUI thread)."""
         if self._power_monitor_proc is not None:
             try:
-                # Kill the entire isolated process group (bash + ros2 children)
                 os.killpg(os.getpgid(self._power_monitor_proc.pid), signal.SIGTERM)
             except Exception:
                 try:
@@ -1953,17 +2258,18 @@ class MainWindow(QMainWindow):
         self._power_monitor_proc = None
 
     def closeEvent(self, event):
+        if hasattr(self, '_ros_sync') and self._ros_sync:
+            try:
+                self._ros_sync.stop()
+            except Exception:
+                pass
+        if hasattr(self, '_status_broadcast_timer') and self._status_broadcast_timer:
+            self._status_broadcast_timer.stop()
         self._power_thread.stop()
         self._stop_power_monitor()
-        if self._launch_proc and self._launch_proc.poll() is None:
-            try:
-                os.killpg(os.getpgid(self._launch_proc.pid), signal.SIGTERM)
-            except Exception:
-                try:
-                    self._launch_proc.terminate()
-                except Exception:
-                    pass
+        self._terminate_launch_proc()
         super().closeEvent(event)
+
 
 
 def main():

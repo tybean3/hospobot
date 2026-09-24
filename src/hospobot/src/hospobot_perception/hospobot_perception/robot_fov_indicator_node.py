@@ -10,6 +10,7 @@ class RobotFovIndicatorNode(Node):
         super().__init__('robot_fov_indicator_node')
         
         self.declare_parameter('flip_angles', False)
+        self.declare_parameter('nav_mode', 'mapping')
         self.declare_parameter('cone_range', 2.5) # Cone length in meters
         self.declare_parameter('robot_radius', 0.26) # Robot radius in meters
         self.declare_parameter('laser_frame', 'laser_frame')
@@ -17,6 +18,7 @@ class RobotFovIndicatorNode(Node):
         self.declare_parameter('publish_rate', 5.0) # Hz
         
         self.flip_angles = self.get_parameter('flip_angles').get_parameter_value().bool_value
+        self.nav_mode = self.get_parameter('nav_mode').get_parameter_value().string_value
         self.cone_range = self.get_parameter('cone_range').get_parameter_value().double_value
         self.robot_radius = self.get_parameter('robot_radius').get_parameter_value().double_value
         self.laser_frame = self.get_parameter('laser_frame').get_parameter_value().string_value
@@ -38,23 +40,24 @@ class RobotFovIndicatorNode(Node):
         marker_id = 0
 
         # ==========================================
-        # 1. ROBOT POSE: Circular Footprint Disc & Ring
+        # 1. ROBOT POSE: 475mm Square Footprint Plate & Perimeter
         # ==========================================
-        # 1a. Base Disc (Semi-transparent circle)
+        half_w = 0.2375 # 475mm / 2
+        # 1a. Base Plate (Semi-transparent 475mm square)
         disc_marker = Marker()
         disc_marker.header.stamp = now
         disc_marker.header.frame_id = self.base_frame
-        disc_marker.ns = 'robot_pose_circle'
+        disc_marker.ns = 'robot_pose_square'
         disc_marker.id = marker_id
         marker_id += 1
-        disc_marker.type = Marker.CYLINDER
+        disc_marker.type = Marker.CUBE
         disc_marker.action = Marker.ADD
         disc_marker.pose.position.x = 0.0
         disc_marker.pose.position.y = 0.0
         disc_marker.pose.position.z = 0.005
         disc_marker.pose.orientation.w = 1.0
-        disc_marker.scale.x = robot_r * 2.0
-        disc_marker.scale.y = robot_r * 2.0
+        disc_marker.scale.x = half_w * 2.0  # 0.475m
+        disc_marker.scale.y = half_w * 2.0  # 0.475m
         disc_marker.scale.z = 0.01
         disc_marker.color.r = 0.0
         disc_marker.color.g = 0.6
@@ -62,11 +65,11 @@ class RobotFovIndicatorNode(Node):
         disc_marker.color.a = 0.35
         marker_array.markers.append(disc_marker)
 
-        # 1b. Outer Ring (Crisp boundary perimeter)
+        # 1b. Outer Square Perimeter (Crisp boundary perimeter)
         ring_marker = Marker()
         ring_marker.header.stamp = now
         ring_marker.header.frame_id = self.base_frame
-        ring_marker.ns = 'robot_pose_ring'
+        ring_marker.ns = 'robot_pose_perimeter'
         ring_marker.id = marker_id
         marker_id += 1
         ring_marker.type = Marker.LINE_STRIP
@@ -78,12 +81,17 @@ class RobotFovIndicatorNode(Node):
         ring_marker.color.b = 1.0
         ring_marker.color.a = 0.95
 
-        num_ring_pts = 64
-        for i in range(num_ring_pts + 1):
-            theta = 2.0 * math.pi * i / num_ring_pts
+        corners = [
+            (half_w, half_w),
+            (-half_w, half_w),
+            (-half_w, -half_w),
+            (half_w, -half_w),
+            (half_w, half_w)
+        ]
+        for cx, cy in corners:
             p = Point()
-            p.x = robot_r * math.cos(theta)
-            p.y = robot_r * math.sin(theta)
+            p.x = cx
+            p.y = cy
             p.z = 0.01
             ring_marker.points.append(p)
         marker_array.markers.append(ring_marker)
@@ -123,7 +131,8 @@ class RobotFovIndicatorNode(Node):
         # Standard mode (Lidar mounted backwards: 0°=Rear, 90°=Left, 180°=Front, 270°=Right):
         # 1. Left FOV: 57° to 123° (span 66°, centered at 90°)
         # 2. Front FOV: 147° to 213° (span 66°, centered at 180°)
-        # 3. Right FOV: 237° to 303° (span 66°, centered at 270°)
+        current_nav_mode = self.get_parameter('nav_mode').get_parameter_value().string_value
+        
         if not flip:
             sectors = [
                 {
@@ -151,6 +160,15 @@ class RobotFovIndicatorNode(Node):
                     'color_line': (1.0, 0.7, 0.1, 0.90),
                 },
             ]
+            if current_nav_mode == 'localization':
+                sectors.append({
+                    'name': 'REAR',
+                    'label': 'REAR FOV (66°)',
+                    'start_deg': 327.0,
+                    'end_deg': 393.0, # 327° to 33° mod 360
+                    'color_fill': (0.8, 0.2, 1.0, 0.28),    # Vibrant Purple / Violet
+                    'color_line': (0.85, 0.2, 1.0, 0.90),
+                })
         else:
             # Flipped mode (Operator stands in front, 180° blocked):
             sectors = [

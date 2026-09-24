@@ -48,25 +48,35 @@
         .nav-bar {
             position: relative;
             display: flex;
-            justify-content: center;
-            gap: 20px;
-            padding: 15px;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 16px;
             background: rgba(30, 41, 59, 0.95);
             border-bottom: 1px solid #334155;
             z-index: 1000;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
         }
 
         .nav-btn {
             background: transparent;
             color: #94a3b8;
             border: 2px solid transparent;
-            padding: 10px 24px;
+            padding: 6px 12px;
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 1rem;
+            font-size: 0.88rem;
             transition: all 0.2s ease;
+            white-space: nowrap;
         }
 
         .nav-btn:hover {
@@ -80,28 +90,61 @@
             background: rgba(15, 23, 42, 0.5);
         }
 
-        /* --- STATUS INDICATORS (NEW) --- */
-        .nav-status {
-            position: absolute;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
+        .nav-right {
             display: flex;
-            gap: 15px;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .mode-switcher-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(15, 23, 42, 0.7);
+            padding: 3px 6px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
+        .mode-btn-desktop {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #334155;
+            background: transparent;
+            color: #94a3b8;
+            white-space: nowrap;
+        }
+
+        .mode-btn-desktop:hover {
+            border-color: #64748b;
+            color: #f8fafc;
+        }
+
+        /* --- STATUS INDICATORS --- */
+        .nav-status {
+            display: flex;
+            gap: 8px;
             align-items: center;
             color: #94a3b8;
-            font-size: 1.3vh;
+            font-size: 0.8rem;
             font-weight: bold;
         }
 
         .status-item {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             background: rgba(15, 23, 42, 0.6);
-            padding: 6px 12px;
+            padding: 4px 10px;
             border-radius: 6px;
             border: 1px solid #334155;
+            white-space: nowrap;
         }
 
         .status-item span.label {
@@ -113,6 +156,7 @@
             height: 10px;
             border-radius: 50%;
             background-color: var(--danger);
+
         }
 
         .status-dot.connected {
@@ -136,7 +180,8 @@
         }
 
         #view-status.active {
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         /* --- VIEW 1: ROS NETWORK --- */
@@ -497,23 +542,116 @@
         }
 
         .room-sel-btn {
-            background-color: #3b82f6;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 20px;
-            font-size: 24px;
-            font-weight: bold;
+            background-color: rgba(30, 41, 59, 0.7);
+            color: #f8fafc;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 0.95rem;
+            font-weight: 600;
             cursor: pointer;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            transition: all 0.1s ease;
+            transition: all 0.2s ease;
+            text-align: center;
         }
         .room-sel-btn:hover {
-            background-color: #2563eb;
-            transform: scale(1.05);
+            background-color: rgba(56, 189, 248, 0.2);
+            border-color: #38bdf8;
+            transform: translateY(-2px);
         }
         .room-sel-btn:active {
+            transform: scale(0.96);
+        }
+        .room-sel-btn.active {
+            background-color: #10b981 !important;
+            color: #041226 !important;
+            font-weight: 800 !important;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.6) !important;
+            border-color: #10b981 !important;
+        }
+
+        /* --- ROOM HOTSPOTS ON FLOORPLAN --- */
+        .room-hotspot {
+            position: absolute;
+            cursor: pointer;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(16, 185, 129, 0.04);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .room-hotspot:hover {
+            background: rgba(16, 185, 129, 0.25);
+            border-color: #10b981;
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.5), inset 0 0 8px rgba(16, 185, 129, 0.3);
+            transform: scale(1.05);
+            z-index: 30;
+        }
+
+        .room-hotspot:active {
             transform: scale(0.95);
+        }
+
+        .room-hotspot.active {
+            background: rgba(56, 189, 248, 0.35);
+            border-color: #38bdf8;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.6), inset 0 0 10px rgba(56, 189, 248, 0.4);
+            animation: pulse-beacon 1.6s infinite ease-in-out;
+            z-index: 40;
+        }
+
+        .beacon-pin {
+            display: none;
+            position: absolute;
+            top: -24px;
+            font-size: 16px;
+            animation: bounce-pin 0.8s infinite alternate ease-in-out;
+        }
+
+        .room-hotspot.active .beacon-pin {
+            display: block;
+        }
+
+        /* Room number label inside hotspot */
+        .hotspot-label {
+            position: absolute;
+            font-size: clamp(7px, 1.2vw, 11px);
+            font-weight: 700;
+            color: #a7f3d0;
+            letter-spacing: -0.3px;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            white-space: nowrap;
+            pointer-events: none;
+            line-height: 1;
+        }
+
+        .room-hotspot.active .hotspot-label {
+            color: #ffffff;
+        }
+
+        @keyframes pulse-beacon {
+            0% {
+                box-shadow: 0 0 6px rgba(56, 189, 248, 0.6), inset 0 0 6px rgba(56, 189, 248, 0.3);
+                border-color: #38bdf8;
+            }
+            50% {
+                box-shadow: 0 0 24px rgba(56, 189, 248, 1), inset 0 0 14px rgba(56, 189, 248, 0.6);
+                border-color: #ffffff;
+            }
+            100% {
+                box-shadow: 0 0 6px rgba(56, 189, 248, 0.6), inset 0 0 6px rgba(56, 189, 248, 0.3);
+                border-color: #38bdf8;
+            }
+        }
+
+        @keyframes bounce-pin {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-5px); }
         }
 
         .slam-map {
@@ -1082,6 +1220,7 @@
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
             position: relative;
             overflow: hidden;
+            min-width: 350px;
         }
 
         .radar-panel h3 {
@@ -1103,13 +1242,202 @@
         }
 
         .data-panel {
-            flex: 1;
+            flex: 1.2;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            padding-right: 10px;
+            gap: 16px;
+            padding-right: 5px;
             height: 100%;
             min-height: 0;
+        }
+
+        /* Dedicated Camera Card */
+        .camera-card {
+            background: rgba(30, 41, 59, 0.85);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            position: relative;
+            flex: 1.5;
+            min-height: 280px;
+            transition: all 0.3s ease;
+        }
+
+        .camera-card.maximized {
+            position: fixed !important;
+            top: 75px !important;
+            left: 20px !important;
+            right: 20px !important;
+            bottom: 20px !important;
+            z-index: 1000 !important;
+            background: rgba(15, 23, 42, 0.98) !important;
+            border-color: var(--accent-blue) !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8) !important;
+        }
+
+        .camera-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+        }
+
+        .camera-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .camera-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .camera-badge.live {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+
+        .camera-badge.live .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse-green 1.5s infinite;
+        }
+
+        .camera-badge.standby {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+
+        .camera-badge.standby .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #f59e0b;
+            border-radius: 50%;
+        }
+
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 12px #10b981; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .camera-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .cam-btn {
+            background: #1e293b;
+            border: 1px solid #475569;
+            color: #cbd5e1;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 500;
+        }
+
+        .cam-btn:hover {
+            background: #334155;
+            color: #fff;
+            border-color: var(--accent-blue);
+        }
+
+        .cam-btn.active {
+            background: #0284c7;
+            color: #fff;
+            border-color: #38bdf8;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+        }
+
+        .camera-viewport {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 200px;
+            background: #090d16;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #live-camera-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .camera-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #64748b;
+            background: rgba(15, 23, 42, 0.95);
+            font-size: 0.88rem;
+            text-align: center;
+            padding: 20px;
+            transition: opacity 0.3s ease;
+            z-index: 5;
+        }
+
+        .camera-placeholder.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .cam-crosshair-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: none;
+            z-index: 10;
+        }
+
+        .cam-crosshair-overlay.active {
+            display: block;
+        }
+
+        .cam-meta-bar {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            color: #94a3b8;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 0 4px;
         }
 
         #semantic-cards-container {
@@ -1117,16 +1445,16 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
             padding-right: 5px;
-            min-height: 0;
+            min-height: 80px;
         }
 
         .semantic-card {
             background: rgba(15, 23, 42, 0.9);
             border-left: 4px solid var(--functional-border);
             border-radius: 8px;
-            padding: 15px;
+            padding: 12px 15px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             display: flex;
             justify-content: space-between;
@@ -1138,9 +1466,9 @@
         }
 
         .semantic-info h4 {
-            margin: 0 0 5px 0;
+            margin: 0 0 4px 0;
             color: #f8fafc;
-            font-size: 1.8vh;
+            font-size: 1.6vh;
             text-transform: capitalize;
         }
 
@@ -1148,7 +1476,7 @@
             background: #334155;
             padding: 2px 6px;
             border-radius: 4px;
-            font-size: 1vh;
+            font-size: 0.9vh;
             color: #cbd5e1;
             margin-left: 10px;
             vertical-align: super;
@@ -1157,7 +1485,7 @@
         .semantic-details {
             display: flex;
             gap: 15px;
-            font-size: 1.3vh;
+            font-size: 1.2vh;
             color: #94a3b8;
             font-family: 'Courier New', Courier, monospace;
         }
@@ -1585,30 +1913,36 @@
 <body>
 
     <div class="nav-bar">
-        <div style="display: flex; gap: 20px;">
-            <button id="btn-network" class="nav-btn" onclick="switchView('view-network', 'btn-network')">
-                Network</button>
-            <button id="btn-status" class="nav-btn" onclick="switchView('view-status', 'btn-status')">
-                Map</button>
-            <button id="btn-proximity" class="nav-btn active" onclick="switchView('view-proximity', 'btn-proximity')">
-                Dashboard</button>
-            <button id="btn-semantic" class="nav-btn" onclick="switchView('view-semantic', 'btn-semantic')">Semantic
-                Debug
-            </button>
-            <button id="btn-settings" class="nav-btn" onclick="switchView('view-settings', 'btn-settings')">Settings
-            </button>
+        <div class="nav-links">
+            <button id="btn-network" class="nav-btn" onclick="switchView('view-network', 'btn-network')">Network</button>
+            <button id="btn-status" class="nav-btn" onclick="switchView('view-status', 'btn-status')">Map</button>
+            <button id="btn-proximity" class="nav-btn active" onclick="switchView('view-proximity', 'btn-proximity')">Dashboard</button>
+            <button id="btn-semantic" class="nav-btn" onclick="switchView('view-semantic', 'btn-semantic')">Semantic Debug</button>
+            <button id="btn-settings" class="nav-btn" onclick="switchView('view-settings', 'btn-settings')">Settings</button>
+            <a href="mobile_dash.html" class="nav-btn" style="text-decoration: none; display: flex; align-items: center; gap: 6px; color: #38bdf8;">📱 Mobile Nav</a>
         </div>
 
-        <div class="nav-status">
-            <div class="status-item">
-                <span class="status-dot connected" id="ui-conn-dot"></span>
-                <span id="ui-conn-text">Connected</span>
+        <div class="nav-right">
+            <!-- Robot Launch Mode Switcher -->
+            <div class="mode-switcher-container">
+                <span style="font-size: 0.75rem; color: #94a3b8; font-weight: bold; text-transform: uppercase;">Mode:</span>
+                <button class="mode-btn-desktop" id="dt-mode-loc" onclick="setRobotMode('localization')">🚀 Auto Nav</button>
+                <button class="mode-btn-desktop" id="dt-mode-map" onclick="setRobotMode('mapping')">🗺️ Mapping</button>
+                <button class="mode-btn-desktop" id="dt-mode-drive" onclick="setRobotMode('driving')">🎮 Driving</button>
+                <button class="mode-btn-desktop" id="dt-mode-stop" onclick="setRobotMode('idle')">🛑 Stop</button>
             </div>
-            <div class="status-item">
-                <span class="label">Ping:</span> <span id="ui-ping">12ms</span>
-            </div>
-            <div class="status-item">
-                <span class="label">Bat:</span> <span id="ui-bat">84%</span>
+
+            <div class="nav-status">
+                <div class="status-item">
+                    <span class="status-dot connected" id="ui-conn-dot"></span>
+                    <span id="ui-conn-text">Connected</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Ping:</span> <span id="ui-ping">12ms</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Bat:</span> <span id="ui-bat">84%</span>
+                </div>
             </div>
         </div>
     </div>
@@ -1626,45 +1960,51 @@
     </div>
 
     <div id="view-status" class="view-container">
+        <div class="hotspot-viewport" id="viewport" style="display: flex; flex-direction: row; justify-content: center; align-items: flex-start; gap: 24px; padding: 16px 20px; width: 100%; box-sizing: border-box; flex-wrap: wrap;">
+            
+            <!-- Left Column: Telemetry & Status Cards -->
+            <div style="display: flex; flex-direction: column; gap: 12px; width: 240px; flex-shrink: 0;">
+                <div class="info-card">
+                    <h4>Navigation Status</h4>
+                    <div class="data" id="status-nav-state" style="color: #38bdf8;">STANDBY</div>
+                </div>
+                <div class="info-card">
+                    <h4>ODrive System</h4>
+                    <div class="data" id="status-drive-state" style="color: #10b981;">ARMED</div>
+                </div>
+                <div class="info-card">
+                    <h4>Current Pose</h4>
+                    <div class="data" id="status-current-pose">X: 0.00 | Y: 0.00 | θ: 0°</div>
+                </div>
+                <div class="info-card">
+                    <h4>Current Goal Pose</h4>
+                    <div class="data" id="status-goal-pose">X: 0.00 | Y: 0.00</div>
+                </div>
+            </div>
 
-        <div class="nav-overlay-left">
-            <div class="info-card">
-                <h4>Navigation Status</h4>
-                <div class="data" id="status-nav-state" style="color: #38bdf8;">NAVIGATING</div>
+            <!-- Center Column: Interactive Floorplan Map -->
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 400px;">
+                    <h3 style="color: #f8fafc; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.5px; margin: 0;">Hospital Floorplan</h3>
+                    <span style="font-size: 0.75rem; color: #10b981; background: rgba(16, 185, 129, 0.15); padding: 3px 8px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.3);">● Click Room to Call</span>
+                </div>
+                <div class="status-map-container" style="position: relative; height: calc(100vh - 150px); max-height: 780px; aspect-ratio: 512 / 1024; width: auto; background: rgba(10, 16, 30, 0.7); border-radius: 16px; border: 1px solid rgba(56, 189, 248, 0.25); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                    <img src="ui_map_dark.png" alt="Hospital Layout" class="map-bg-img" style="width: 100%; height: 100%; object-fit: fill; display: block; filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.2));">
+                    <div class="hotspot-overlay" id="status-map-hotspots" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: auto;">
+                        <!-- Injected via rooms.json -->
+                    </div>
+                </div>
             </div>
-            <div class="info-card">
-                <h4>ODrive System</h4>
-                <div class="data" id="status-drive-state" style="color: #10b981;">ARMED</div>
-            </div>
-            <div class="info-card">
-                <h4>Current Pose</h4>
-                <div class="data" id="status-current-pose">X: 0.00 | Y: 0.00 | θ: 0°</div>
-            </div>
-            <div class="info-card">
-                <h4>Current Goal Pose</h4>
-                <div class="data" id="status-goal-pose">X: 6.00 | Y: 0.00</div>
-            </div>
-        </div>
 
-        <div class="hotspot-viewport" id="viewport" style="display: flex; flex-direction: column; align-items: center; padding: 40px; overflow-y: auto;">
-            <h2 style="color: #f8fafc; font-size: 36px; margin-bottom: 30px;">Select Destination</h2>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; max-width: 900px;">
-                <button class="room-sel-btn" onclick="navigateToRoom('6-101')">6-101</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6-102')">6-102</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6-103')">6-103</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6-104')">6-104</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6-105')">6-105</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6-106')">6-106</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6-107')">6-107</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6-108')">6-108</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6-109')">6-109</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6-111')">6-111</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6-112')">6-112</button>
-                <button choslass="room-sel-btn" onclick="navigateToRoom('6-113')">6-113</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6-114')">6-114</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6-115')">6-115</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6PC1')">6PC1</button>
-                <button class="room-sel-btn" onclick="navigateToRoom('6-1S1')">6-1S1</button>
+            <!-- Right Column: Destination List -->
+            <div style="display: flex; flex-direction: column; gap: 12px; width: 260px; flex-shrink: 0; background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: 16px; border: 1px solid #334155; max-height: calc(100vh - 150px); box-sizing: border-box;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="color: #f8fafc; font-size: 1.05rem; font-weight: 700; margin: 0;">Destinations</h3>
+                    <span id="active-target-pill" style="font-size: 0.75rem; color: #38bdf8; background: rgba(56, 189, 248, 0.15); padding: 2px 8px; border-radius: 6px; display: none;">Target: <strong id="active-target-label">None</strong></span>
+                </div>
+                <div id="status-rooms-list" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; overflow-y: auto; padding-right: 4px; flex: 1;">
+                    <!-- Injected via rooms.json -->
+                </div>
             </div>
         </div>
 
@@ -1673,21 +2013,66 @@
     </div>
 
     <div id="view-semantic" class="view-container">
-        <h1 class="network-header" style="margin-top: 30px;"> <span></span></h1>
+        <h1 class="network-header" style="margin-top: 25px; margin-bottom: 20px;">OAK-D Vision & Semantic <span>Debug</span></h1>
         <div class="semantic-container">
             <div class="radar-panel">
                 <h3>Live Radar (Top-Down)</h3>
                 <canvas id="semantic-radar" width="500" height="500"></canvas>
             </div>
             <div class="data-panel">
-                <div id="semantic-cards-container">
-                    <p style="color: #64748b; text-align: center; margin-top: 40px;">No objects tracked currently.</p>
+                <!-- OAK-D RGB Camera Card -->
+                <div class="camera-card" id="cam-card">
+                    <div class="camera-header">
+                        <div class="camera-title">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #38bdf8;">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                <circle cx="12" cy="13" r="4"></circle>
+                            </svg>
+                            <span>OAK RGB Camera Feed</span>
+                            <span class="camera-badge standby" id="cam-badge">
+                                <span class="pulse-dot"></span>
+                                <span id="cam-badge-text">STANDBY</span>
+                            </span>
+                        </div>
+                        <div class="camera-controls">
+                            <button class="cam-btn" id="cam-btn-crosshair" onclick="toggleCamCrosshair()" title="Toggle driving aim crosshairs">
+                                ✛ Crosshair
+                            </button>
+                            <button class="cam-btn" id="cam-btn-expand" onclick="toggleCamMaximize()" title="Maximize / POV driving mode">
+                                ⛶ Maximize
+                            </button>
+                        </div>
+                    </div>
+                    <div class="camera-viewport" id="camera-viewport">
+                        <div class="camera-placeholder" id="camera-placeholder">
+                            <div style="font-size: 2.2rem; animation: pulse 2s infinite;">📷</div>
+                            <div style="font-weight: 600; color: #94a3b8;" id="cam-placeholder-title">Connecting to OAK Camera...</div>
+                            <div style="font-size: 0.75rem; color: #64748b;" id="cam-placeholder-topic">Subscribing to /oak/rgb/image_raw/compressed</div>
+                        </div>
+                        <img id="live-camera-feed" src="" alt="OAK RGB Camera Feed" style="display:none;" />
+                        <svg class="cam-crosshair-overlay" id="cam-crosshairs" viewBox="0 0 100 100" preserveAspectRatio="none" style="width: 100%; height: 100%;">
+                            <line x1="50" y1="0" x2="50" y2="100" stroke="rgba(56, 189, 248, 0.4)" stroke-width="0.5" stroke-dasharray="2,2"/>
+                            <line x1="0" y1="50" x2="100" y2="50" stroke="rgba(56, 189, 248, 0.4)" stroke-width="0.5" stroke-dasharray="2,2"/>
+                            <circle cx="50" cy="50" r="10" stroke="rgba(56, 189, 248, 0.5)" stroke-width="0.5" fill="none"/>
+                            <line x1="30" y1="75" x2="70" y2="75" stroke="rgba(16, 185, 129, 0.6)" stroke-width="0.75"/>
+                            <line x1="38" y1="85" x2="62" y2="85" stroke="rgba(16, 185, 129, 0.4)" stroke-width="0.5"/>
+                        </svg>
+                    </div>
+                    <div class="cam-meta-bar">
+                        <span id="cam-topic-label">Topic: /oak/rgb/image_raw/compressed</span>
+                        <span id="cam-fps-label">0.0 FPS</span>
+                    </div>
                 </div>
-                <div class="camera-feed-container" id="camera-feed-container"
-                    style="flex-shrink: 0; background: rgba(15, 23, 42, 0.9); border: 1px solid #334155; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 200px;">
-                    <img id="live-camera-feed" src=""
-                        alt="Live Camera Feed (Waiting for /oakd/rgb/image_rect/compressed...)"
-                        style="width: 100%; height: auto; display: block;" />
+
+                <!-- Tracked Objects Section -->
+                <div style="display: flex; flex-direction: column; flex: 0.9; min-height: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <h4 style="margin: 0; color: #cbd5e1; font-size: 0.95rem; font-weight: 600;">Tracked Semantic Objects</h4>
+                        <span id="tracked-obj-count" style="font-size: 0.75rem; color: #64748b;">0 Active</span>
+                    </div>
+                    <div id="semantic-cards-container">
+                        <p style="color: #64748b; text-align: center; margin-top: 20px; font-size: 0.85rem;">No objects tracked currently (Autonomous tracker idle in Driving Mode).</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2622,8 +3007,8 @@
                 window.latestActiveNodes = activeNodes;
 
                 networkEntities.filter(e => e.type === 'Node').forEach(entity => {
-                    const cleanEntityName = entity.name.replace(/^\//, '');
-                    const isOnline = activeNodes.includes(cleanEntityName);
+                    const names = entity.name.split(',').map(n => n.trim().replace(/^\//, ''));
+                    const isOnline = names.some(n => activeNodes.includes(n));
                     updateNetworkItem(entity.id, isOnline ? 'FUNCTIONAL' : 'OFFLINE');
                 });
 
@@ -2758,6 +3143,30 @@
             }
         }
 
+        function drawInitialRadar() {
+            const canvas = document.getElementById('semantic-radar');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const scale = 40;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+            ctx.lineWidth = 1;
+            for (let r = 1; r <= 5; r++) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, r * scale, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+            ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(canvas.width, cy); ctx.stroke();
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 2 * Math.PI); ctx.fill();
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 20); ctx.stroke();
+        }
+
         // --- SPA CONTROLLER ---
         function switchView(viewId, btnId) {
             document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
@@ -2767,6 +3176,9 @@
 
             if (viewId === 'view-network') {
                 lines.forEach(line => { line.show(); line.position(); });
+            } else if (viewId === 'view-semantic') {
+                lines.forEach(line => line.hide());
+                drawInitialRadar();
             } else {
                 lines.forEach(line => line.hide());
                 updateEgoCentricView();
@@ -2776,10 +3188,10 @@
         // --- NETWORK GRAPH SETUP ---
         const networkEntities = [
             { id: 'node_diag', name: '/diagnostics_node', type: 'Node', shape: 'shape-node', x: 50, y: 50 },
-            { id: 'node_camera', name: '/oakd_yolo_node', type: 'Node', shape: 'shape-node', x: 450, y: 50 },
+            { id: 'node_camera', name: '/oak, /oak_container, /oakd_yolo_node', type: 'Node', shape: 'shape-node', x: 450, y: 50 },
             { id: 'node_bridge', name: '/rosbridge_websocket', type: 'Node', shape: 'shape-node', x: 850, y: 50 },
 
-            { id: 'topic_pts_rgb', name: '/oakd/points & image', type: 'Topic', shape: 'shape-rect', x: 300, y: 160 },
+            { id: 'topic_pts_rgb', name: '/oak/rgb/image_raw & /oakd/points & /oak/points', type: 'Topic', shape: 'shape-rect', x: 300, y: 160 },
             { id: 'topic_dets', name: '/oakd/detections', type: 'Topic', shape: 'shape-rect', x: 600, y: 160 },
 
             { id: 'node_proj', name: '/semantic_projection_node', type: 'Node', shape: 'shape-node', x: 450, y: 270 },
@@ -3091,42 +3503,229 @@
             cmdVelPub.publish(twist);
         }
 
-        function navigateToRoom(roomName) {
-            const roomEls = document.querySelectorAll('.room-btn');
-            let roomEl = null;
-            for (let el of roomEls) {
-                if (el.innerHTML.includes(roomName)) {
-                    roomEl = el;
-                    break;
+        // Robot Mode Management
+        const setModePub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/hospobot/set_mode',
+            messageType: 'std_msgs/String'
+        });
+
+        const currentModeSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/hospobot/current_mode',
+            messageType: 'std_msgs/String'
+        });
+
+        const modeStatusSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/hospobot/mode_status',
+            messageType: 'std_msgs/String'
+        });
+
+        let activeRobotMode = "idle";
+        currentModeSub.subscribe((msg) => {
+            let mode = msg.data;
+            let stateText = null;
+            try {
+                const parsed = JSON.parse(msg.data);
+                if (parsed.mode) mode = parsed.mode;
+                if (parsed.state) stateText = parsed.state;
+            } catch(e) {}
+            updateModeDesktopUI(mode, stateText);
+        });
+
+        // Also subscribe to rich mode_status for detailed state text (localization confirmation etc)
+        modeStatusSub.subscribe((msg) => {
+            try {
+                const parsed = JSON.parse(msg.data);
+                if (parsed.mode) {
+                    updateModeDesktopUI(parsed.mode, parsed.state || null);
+                }
+            } catch(e) {}
+        });
+
+        function updateModeDesktopUI(mode, stateText) {
+            activeRobotMode = (mode || "idle").toLowerCase();
+            const btnLoc = document.getElementById('dt-mode-loc');
+            const btnMap = document.getElementById('dt-mode-map');
+            const btnDrive = document.getElementById('dt-mode-drive');
+            const btnStop = document.getElementById('dt-mode-stop');
+            const statusNavState = document.getElementById('status-nav-state');
+
+            [btnLoc, btnMap, btnDrive].forEach(b => {
+                if (b) {
+                    b.style.background = 'transparent';
+                    b.style.borderColor = '#334155';
+                    b.style.color = '#94a3b8';
+                    b.style.boxShadow = 'none';
+                }
+            });
+
+            if (activeRobotMode === 'localization') {
+                if (btnLoc) {
+                    btnLoc.style.background = 'rgba(16, 185, 129, 0.25)';
+                    btnLoc.style.borderColor = '#10b981';
+                    btnLoc.style.color = '#34d399';
+                    btnLoc.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.4)';
+                }
+                if (statusNavState) {
+                    statusNavState.innerText = stateText || 'AUTO NAV READY';
+                    statusNavState.style.color = '#10b981';
+                }
+            } else if (activeRobotMode === 'mapping') {
+                if (btnMap) {
+                    btnMap.style.background = 'rgba(56, 189, 248, 0.25)';
+                    btnMap.style.borderColor = '#38bdf8';
+                    btnMap.style.color = '#38bdf8';
+                    btnMap.style.boxShadow = '0 0 12px rgba(56, 189, 248, 0.4)';
+                }
+                if (statusNavState) {
+                    statusNavState.innerText = stateText || 'MAPPING ACTIVE';
+                    statusNavState.style.color = '#38bdf8';
+                }
+            } else if (activeRobotMode === 'driving') {
+                if (btnDrive) {
+                    btnDrive.style.background = 'rgba(245, 158, 11, 0.25)';
+                    btnDrive.style.borderColor = '#f59e0b';
+                    btnDrive.style.color = '#f59e0b';
+                    btnDrive.style.boxShadow = '0 0 12px rgba(245, 158, 11, 0.4)';
+                }
+                if (statusNavState) {
+                    statusNavState.innerText = stateText || 'DRIVING READY';
+                    statusNavState.style.color = '#f59e0b';
+                }
+            } else {
+                if (statusNavState) {
+                    statusNavState.innerText = 'STANDBY';
+                    statusNavState.style.color = '#94a3b8';
                 }
             }
+        }
 
-            if (!roomEl) return;
 
-            const cssLeft = parseInt(roomEl.style.left);
-            const cssTop = parseInt(roomEl.style.top);
+        function setRobotMode(mode) {
+            setModePub.publish(new ROSLIB.Message({ data: mode }));
+            console.log("Requested robot mode:", mode);
+        }
 
-            const targetX = (cssLeft - 2000) / 100;
-            const targetY = (2000 - cssTop) / 100;
+        let roomsConfig = {};
+        fetch('rooms.json')
+            .then(res => res.json())
+            .then(data => {
+                roomsConfig = data;
+                initMapHotspots();
+            })
+            .catch(err => console.error("Error loading rooms.json", err));
 
-            console.log(`Navigating to ${roomName} at map coords (${targetX}, ${targetY})`);
+        function initMapHotspots() {
+            const overlay = document.getElementById('status-map-hotspots');
+            const list = document.getElementById('status-rooms-list');
+            if (!overlay) return;
+            overlay.innerHTML = '';
+            if (list) list.innerHTML = '';
 
-            let rad = 0 * (Math.PI / 180);
-            let qz = Math.sin(rad / 2);
-            let qw = Math.cos(rad / 2);
+            for (const [roomName, info] of Object.entries(roomsConfig)) {
+                const ui = info.ui || { left: 0, top: 0, width: 10, height: 4 };
+
+                // Hotspot directly on the map
+                const spot = document.createElement('div');
+                spot.className = 'room-hotspot';
+                spot.dataset.room = roomName;
+                spot.style.left = `${ui.left}%`;
+                spot.style.top = `${ui.top}%`;
+                spot.style.width = `${ui.width}%`;
+                spot.style.height = `${ui.height}%`;
+                spot.title = `Call robot to ${roomName}`;
+
+                // Visible room number label
+                const label = document.createElement('span');
+                label.className = 'hotspot-label';
+                label.innerText = roomName;
+                spot.appendChild(label);
+
+                const pin = document.createElement('span');
+                pin.className = 'beacon-pin';
+                pin.innerText = '📍';
+                spot.appendChild(pin);
+
+                spot.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    navigateToRoom(roomName);
+                });
+                overlay.appendChild(spot);
+
+                // Button in the destinations list
+                if (list) {
+                    const btn = document.createElement('button');
+                    btn.className = 'room-sel-btn';
+                    btn.dataset.room = roomName;
+                    btn.innerText = roomName;
+                    btn.addEventListener('click', () => navigateToRoom(roomName));
+                    list.appendChild(btn);
+                }
+            }
+        }
+
+        function navigateToRoom(roomName) {
+            const room = roomsConfig[roomName];
+            if (!room) return;
+
+            if (activeRobotMode !== 'localization') {
+                setRobotMode('localization');
+            }
+
+            console.log(`Navigating to ${roomName}`, room);
+
+            // Highlight hotspot
+            document.querySelectorAll('.room-hotspot').forEach(el => {
+                if (el.dataset.room === roomName) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+
+            // Highlight destination list button
+            document.querySelectorAll('.room-sel-btn').forEach(el => {
+                if (el.dataset.room === roomName) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+
+            // Update Target Pill
+            const pill = document.getElementById('active-target-pill');
+            const pillLabel = document.getElementById('active-target-label');
+            if (pill && pillLabel) {
+                pillLabel.innerText = roomName;
+                pill.style.display = 'inline-block';
+            }
+
+            // Calculate quaternion from theta
+            const theta = room.theta || 0.0;
+            const qz = Math.sin(theta / 2.0);
+            const qw = Math.cos(theta / 2.0);
 
             let poseMsg = new ROSLIB.Message({
                 header: { frame_id: 'map' },
                 pose: {
-                    position: { x: targetX, y: targetY, z: 0.0 },
+                    position: { x: room.x || 0.0, y: room.y || 0.0, z: 0.0 },
                     orientation: { x: 0.0, y: 0.0, z: qz, w: qw }
                 }
             });
             goalPub.publish(poseMsg);
 
-            goalPose = { x: targetX * 100, y: targetY * 100 };
-            navState = 'NAVIGATING';
-            updateEgoCentricView();
+            // Update info card
+            const goalEl = document.getElementById('status-goal-pose');
+            if (goalEl) {
+                goalEl.innerText = `${roomName} (X: ${(room.x||0).toFixed(2)}, Y: ${(room.y||0).toFixed(2)})`;
+            }
+            const navStateEl = document.getElementById('status-nav-state');
+            if (navStateEl) {
+                navStateEl.innerText = `CALLING TO ${roomName}`;
+                navStateEl.style.color = '#10b981';
+            }
         }
 
         function dispatchManualGoal() {
@@ -3554,8 +4153,13 @@
 
             const container = document.getElementById('semantic-cards-container');
             const validObjects = msg.objects ? msg.objects.filter(obj => !obj.class_name.toUpperCase().includes('UNKNOWN')) : [];
+            const countBadge = document.getElementById('tracked-obj-count');
+            if (countBadge) {
+                countBadge.innerText = `${validObjects.length} Active`;
+            }
+
             if (validObjects.length === 0) {
-                container.innerHTML = '<p style="color: #64748b; text-align: center; margin-top: 40px;">No objects tracked currently.</p>';
+                container.innerHTML = '<p style="color: #64748b; text-align: center; margin-top: 20px; font-size: 0.85rem;">No objects tracked currently (Autonomous tracker idle in Driving Mode).</p>';
             } else {
                 let html = '';
                 validObjects.forEach(obj => {
@@ -3653,34 +4257,128 @@
         });
 
         // --- LIVE CAMERA FEED LOGIC ---
-        const cameraFeedSub = new ROSLIB.Topic({
+        let camFrameCount = 0;
+        let camLastFpsTime = performance.now();
+        let camTimeoutTimer = null;
+
+        function updateCamUiState(isLive, topicName) {
+            const badge = document.getElementById('cam-badge');
+            const badgeText = document.getElementById('cam-badge-text');
+            const placeholder = document.getElementById('camera-placeholder');
+            const img = document.getElementById('live-camera-feed');
+            const topicLabel = document.getElementById('cam-topic-label');
+
+            if (isLive) {
+                if (badge) badge.className = 'camera-badge live';
+                if (badgeText) badgeText.innerText = 'LIVE';
+                if (placeholder) placeholder.classList.add('hidden');
+                if (img) img.style.display = 'block';
+                if (topicLabel && topicName) topicLabel.innerText = 'Topic: ' + topicName;
+            } else {
+                if (badge) badge.className = 'camera-badge standby';
+                if (badgeText) badgeText.innerText = 'STANDBY';
+                if (placeholder) placeholder.classList.remove('hidden');
+                const fpsLabel = document.getElementById('cam-fps-label');
+                if (fpsLabel) fpsLabel.innerText = '0.0 FPS';
+            }
+        }
+
+        function handleCamFrame(msg, topicName) {
+            if (!document.getElementById('view-semantic').classList.contains('active')) return;
+            const img = document.getElementById('live-camera-feed');
+            if (!img) return;
+
+            let base64String = "";
+            if (typeof msg.data === 'string') {
+                base64String = msg.data;
+            } else if (Array.isArray(msg.data) || msg.data instanceof Uint8Array) {
+                const bytes = new Uint8Array(msg.data);
+                let binary = '';
+                for (let i = 0; i < bytes.byteLength; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                base64String = window.btoa(binary);
+            } else {
+                console.warn("Unknown camera feed data format", msg.data);
+                return;
+            }
+
+            let mime = 'image/jpeg';
+            if (msg.format && msg.format.toLowerCase().includes('png')) {
+                mime = 'image/png';
+            }
+            img.src = `data:${mime};base64,${base64String}`;
+
+            // Update FPS & UI State
+            camFrameCount++;
+            const now = performance.now();
+            if (now - camLastFpsTime >= 1000) {
+                const fps = ((camFrameCount * 1000) / (now - camLastFpsTime)).toFixed(1);
+                const fpsLabel = document.getElementById('cam-fps-label');
+                if (fpsLabel) fpsLabel.innerText = fps + ' FPS';
+                camFrameCount = 0;
+                camLastFpsTime = now;
+            }
+
+            updateCamUiState(true, topicName);
+
+            clearTimeout(camTimeoutTimer);
+            camTimeoutTimer = setTimeout(() => {
+                updateCamUiState(false, topicName);
+            }, 3000);
+        }
+
+        // Primary OAK hardware topic from depthai_ros_driver_v3
+        const oakCameraSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/oak/rgb/image_raw/compressed',
+            messageType: 'sensor_msgs/CompressedImage'
+        });
+        oakCameraSub.subscribe(function (msg) {
+            handleCamFrame(msg, '/oak/rgb/image_raw/compressed');
+        });
+
+        // Fallback / legacy YOLO topic
+        const oakdYoloSub = new ROSLIB.Topic({
             ros: ros,
             name: '/oakd/rgb/image_rect/compressed',
             messageType: 'sensor_msgs/CompressedImage'
         });
-
-        cameraFeedSub.subscribe(function (msg) {
-            if (!document.getElementById('view-semantic').classList.contains('active')) return;
-            const img = document.getElementById('live-camera-feed');
-            if (img) {
-                let base64String = "";
-                if (typeof msg.data === 'string') {
-                    base64String = msg.data;
-                } else if (Array.isArray(msg.data) || msg.data instanceof Uint8Array) {
-                    // Convert byte array to base64
-                    const bytes = new Uint8Array(msg.data);
-                    let binary = '';
-                    for (let i = 0; i < bytes.byteLength; i++) {
-                        binary += String.fromCharCode(bytes[i]);
-                    }
-                    base64String = window.btoa(binary);
-                } else {
-                    console.warn("Unknown camera feed data format", msg.data);
-                    return;
-                }
-                img.src = "data:image/jpeg;base64," + base64String;
-            }
+        oakdYoloSub.subscribe(function (msg) {
+            handleCamFrame(msg, '/oakd/rgb/image_rect/compressed');
         });
+
+        // Additional fallback topic
+        const oakRectSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/oak/rgb/image_rect/compressed',
+            messageType: 'sensor_msgs/CompressedImage'
+        });
+        oakRectSub.subscribe(function (msg) {
+            handleCamFrame(msg, '/oak/rgb/image_rect/compressed');
+        });
+
+        function toggleCamCrosshair() {
+            const crosshairs = document.getElementById('cam-crosshairs');
+            const btn = document.getElementById('cam-btn-crosshair');
+            if (crosshairs) {
+                crosshairs.classList.toggle('active');
+                if (btn) btn.classList.toggle('active');
+            }
+        }
+
+        function toggleCamMaximize() {
+            const card = document.getElementById('cam-card');
+            const btn = document.getElementById('cam-btn-expand');
+            if (card) {
+                card.classList.toggle('maximized');
+                const isMax = card.classList.contains('maximized');
+                if (btn) {
+                    btn.innerText = isMax ? '✕ Minimize' : '⛶ Maximize';
+                    btn.classList.toggle('active', isMax);
+                }
+            }
+        }
 
         // Enable panning for the static map
         setTimeout(() => {

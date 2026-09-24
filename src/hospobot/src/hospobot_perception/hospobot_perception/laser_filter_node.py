@@ -9,7 +9,9 @@ class LaserFilterNode(Node):
         super().__init__('laser_filter_node')
         
         self.declare_parameter('flip_angles', False)
+        self.declare_parameter('nav_mode', 'mapping')
         self.flip_angles = self.get_parameter('flip_angles').get_parameter_value().bool_value
+        self.nav_mode = self.get_parameter('nav_mode').get_parameter_value().string_value
         
         # Subscribe to raw scan
         self.subscription = self.create_subscription(
@@ -24,7 +26,7 @@ class LaserFilterNode(Node):
             '/scan', 
             rclpy.qos.qos_profile_sensor_data)
             
-        mode_str = "FLIPPED 180° (Operator In Front / Mapping)" if self.flip_angles else "STANDARD (Operator At Rear / Driving)"
+        mode_str = f"{'FLIPPED 180°' if self.flip_angles else 'STANDARD'} | Nav Mode: {self.nav_mode.upper()}"
         self.get_logger().info(f'Laser Filter Node initialized. Mode: {mode_str}')
 
     def scan_callback(self, msg):
@@ -32,20 +34,38 @@ class LaserFilterNode(Node):
         # Convert tuple to list to modify ranges
         ranges = list(msg.ranges)
         
-        # Re-check parameter in case updated dynamically
+        # Re-check parameters in case updated dynamically
         flip = self.get_parameter('flip_angles').get_parameter_value().bool_value
+        current_nav_mode = self.get_parameter('nav_mode').get_parameter_value().string_value
         
+        is_localization = (current_nav_mode == 'localization')
+
         for i in range(len(ranges)):
             angle_rad = msg.angle_min + i * msg.angle_increment
             angle_deg = math.degrees(angle_rad) % 360.0
             
             blocked = False
             
-            if not flip:
-                # Standard mode (Lidar is mounted backwards; 0 degrees is user at robot rear)
-                # 1. Rear Wedge (User + Rear Poles): 303 to 57 degrees
-                # 2. Left Pole (135): 123 to 147 degrees
-                # 3. Right Pole (225): 213 to 237 degrees
+            if is_localization:
+                # Autonomous Navigation / Localization Mode:
+                # Robot navigates autonomously with no operator walking behind it.
+                # The rear 66° opening (327° to 33°) is unblocked and used by AMCL.
+                # Only the 4 structural chassis poles are blocked (each ~24° wide):
+                # 1. Rear Left Pole (45°): 33° to 57°
+                # 2. Front Left Pole (135°): 123° to 147°
+                # 3. Front Right Pole (225°): 213° to 237°
+                # 4. Rear Right Pole (315°): 303° to 327°
+                if (33.0 <= angle_deg <= 57.0) or \
+                   (123.0 <= angle_deg <= 147.0) or \
+                   (213.0 <= angle_deg <= 237.0) or \
+                   (303.0 <= angle_deg <= 327.0):
+                    blocked = True
+            elif not flip:
+                # Standard Mapping Mode:
+                # Operator walks behind the robot (at 0° / 360° rear).
+                # 1. Rear Wedge (User + Rear Poles): 303° to 57° (114° blocked)
+                # 2. Front Left Pole (135°): 123° to 147°
+                # 3. Front Right Pole (225°): 213° to 237°
                 if angle_deg >= 303.0 or angle_deg <= 57.0:
                     blocked = True
                 elif 123.0 <= angle_deg <= 147.0:
@@ -53,11 +73,11 @@ class LaserFilterNode(Node):
                 elif 213.0 <= angle_deg <= 237.0:
                     blocked = True
             else:
-                # Mapping mode: angles rotated by 180 degrees.
-                # Operator stands in front of the robot (180 degrees) looking at the screen.
-                # 1. Front Wedge (User in front): 123 to 237 degrees (180 +/- 57 deg)
-                # 2. Pole 1 (315 deg): 303 to 327 degrees (135 + 180 = 315 +/- 12 deg)
-                # 3. Pole 2 (45 deg): 33 to 57 degrees (225 + 180 = 45 +/- 12 deg)
+                # Flipped Mapping Mode:
+                # Operator stands in front of the robot (180°).
+                # 1. Front Wedge (User in front): 123° to 237°
+                # 2. Rear Right Pole: 303° to 327°
+                # 3. Rear Left Pole: 33° to 57°
                 if 123.0 <= angle_deg <= 237.0:
                     blocked = True
                 elif 303.0 <= angle_deg <= 327.0:

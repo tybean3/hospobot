@@ -33,8 +33,8 @@ class CmdVelMux(Node):
         
         self.sub_web = self.create_subscription(Twist, '/cmd_vel_web', self.web_cb, 10)
         self.sub_ps5 = self.create_subscription(Twist, '/cmd_vel_ps5', self.ps5_cb, 10)
-        self.sub_cmd_vel = self.create_subscription(Twist, '/cmd_vel', self.ps5_cb, 10)
-        self.sub_nav = self.create_subscription(Twist, '/cmd_vel_nav', self.nav_cb, 10)
+        # Nav2 final collision-checked, smoothed output publishes to /cmd_vel
+        self.sub_nav = self.create_subscription(Twist, '/cmd_vel', self.nav_cb, 10)
         
         self.timer = self.create_timer(0.05, self.timer_cb) # 20Hz loop
         self.get_logger().info('Priority CmdVelMux started. Mode: auto_priority')
@@ -61,16 +61,20 @@ class CmdVelMux(Node):
         msg = self.last_msg[mode_str]
         if msg is None: return False
         
-        # Consider it inactive if the message is effectively zero (controller drift / released)
-        # Note: If they intentionally command zero, it will fall through to lower priorities 
-        # or the final stop_msg, which still successfully stops the robot!
-        is_zero = abs(msg.linear.x) < 0.05 and abs(msg.angular.z) < 0.05
-        
-        # Also check timeout
+        # Check timeout
         now = self.get_clock().now().nanoseconds / 1e9
         is_recent = (now - self.last_time[mode_str]) < self.timeout
+        if not is_recent:
+            return False
+
+        # Only check zero deadband for manual joysticks (web/ps5) to prevent stick drift from blocking lower priorities.
+        # Nav2 output should NEVER be chopped by a deadband as smooth deceleration/acceleration commands
+        # must pass through without stuttering.
+        if mode_str in ['web', 'ps5']:
+            is_zero = abs(msg.linear.x) < 0.05 and abs(msg.angular.z) < 0.05
+            return not is_zero
         
-        return is_recent and not is_zero
+        return True
 
     def timer_cb(self):
         source = None

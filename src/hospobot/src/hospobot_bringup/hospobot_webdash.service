@@ -1,0 +1,15 @@
+[Unit]
+Description=HospoBot Web Dashboard and Rosbridge WebSocket Server
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=ROS_DOMAIN_ID=42
+WorkingDirectory=/home/hospobot/hospobot_ws
+ExecStart=/bin/bash -c "source /opt/ros/jazzy/setup.bash && source /home/hospobot/hospobot_ws/install/setup.bash && export ROS_DOMAIN_ID=42 && exec ros2 launch hospobot_bringup webdash_launch.py"
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
