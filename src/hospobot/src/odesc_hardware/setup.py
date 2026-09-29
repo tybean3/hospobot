@@ -27,5 +27,6 @@ setup(
             'bno086_node = odesc_hardware.bno086_node:main',
             'hospobot_init_app = odesc_hardware.hospobot_init_app:main',
         ],
+
     },
 )

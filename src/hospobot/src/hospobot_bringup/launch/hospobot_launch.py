@@ -21,6 +21,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     nav_mode = LaunchConfiguration('nav_mode', default='mapping')
     map_arg = LaunchConfiguration('map', default='')
+    launch_webdash = LaunchConfiguration('launch_webdash', default='false')
 
     global_maps_dir = '/home/hospobot/hospobot_ws/global_maps'
     default_map_file = os.path.join(global_maps_dir, 'Building6-Floor1.yaml')
@@ -116,11 +117,12 @@ def generate_launch_description():
         output='screen'
     )
 
-    # 2.3 Rosbridge Server
+    # 2.3 Rosbridge Server (default disabled if running via persistent webdash service)
     rosbridge_server = IncludeLaunchDescription(
         XMLLaunchDescriptionSource(
             os.path.join(get_package_share_directory('rosbridge_server'), 'launch', 'rosbridge_websocket_launch.xml')
-        )
+        ),
+        condition=IfCondition(launch_webdash)
     )
 
     # 3. Lidar Node (sllidar_ros2)
@@ -214,11 +216,12 @@ def generate_launch_description():
         output='screen'
     )
     
-    # 6. Web Dashboard Server
+    # 6. Web Dashboard Server (default disabled if running via persistent webdash service)
     web_server = ExecuteProcess(
         cmd=['python3', '-m', 'http.server', '8000'],
         cwd='/home/hospobot/hospobot_ws/web_dash/',
-        output='screen'
+        output='screen',
+        condition=IfCondition(launch_webdash)
     )
 
     # 6b. Mapping Dashboard Server (Port 8001) - Only starts in mapping mode
@@ -514,6 +517,7 @@ def generate_launch_description():
         DeclareLaunchArgument('use_sim_time', default_value='false', description='Use simulation (Gazebo) clock if true'),
         DeclareLaunchArgument('nav_mode', default_value='mapping', description='Navigation mode: mapping or localization'),
         DeclareLaunchArgument('map', default_value='', description='Map file or name in global_maps for mapping or localization'),
+        DeclareLaunchArgument('launch_webdash', default_value='false', description='Launch web server and rosbridge (if not running as persistent service)'),
         # Bring up can0 first so SocketCAN bridge finds it ready
         can0_setup,
         robot_state_publisher_node,

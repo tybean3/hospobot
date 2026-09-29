@@ -431,6 +431,31 @@
             opacity: 1;
             transform: translateX(-50%) translateY(0);
         }
+
+        @keyframes robotPulseGlow {
+            0% { transform: scale(0.9); opacity: 0.5; }
+            50% { transform: scale(1.35); opacity: 0.95; }
+            100% { transform: scale(0.9); opacity: 0.5; }
+        }
+
+        .btn-localize-mobile {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            border-radius: 20px;
+            color: #38bdf8;
+            font-size: 0.72rem;
+            padding: 4px 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-localize-mobile:active {
+            transform: scale(0.95);
+            background: rgba(56, 189, 248, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -444,6 +469,12 @@
             <span class="status-dot mode-idle" id="hud-mode-dot"></span>
             <span id="hud-mode-text">STANDBY</span>
         </div>
+        <button class="btn-localize-mobile" id="btn-mobile-localize" onclick="triggerAutoLocalize()" title="Run AMCL Auto-Localization with 2D LiDAR">
+            <span>📡</span> <span>Localize</span>
+        </button>
+        <button class="btn-localize-mobile" id="btn-mobile-mode-toggle" onclick="toggleMobileClickMode()" title="Toggle Navigation Goal vs Set Robot Location">
+            <span id="mobile-mode-icon">🎯</span> <span id="mobile-mode-label">Nav</span>
+        </button>
         <div class="hud-badge" id="hud-conn-badge">
             <div class="status-dot" id="status-dot"></div>
             <span id="status-text">Connecting</span>
@@ -462,6 +493,21 @@
             <img src="ui_map_dark.png" alt="Hospital Layout" class="map-bg-img" id="map-img">
             <div class="hotspot-overlay" id="hotspot-overlay">
                 <!-- Clickable Room Indicators Injected Dynamically -->
+            </div>
+
+            <!-- Live Robot Pose Marker on Floorplan -->
+            <div id="mobile-robot-pose-marker" style="position: absolute; width: 30px; height: 30px; pointer-events: none; z-index: 60; display: none; transform: translate(-50%, -50%) rotate(0deg); transition: left 0.12s linear, top 0.12s linear, transform 0.12s linear;">
+                <div class="robot-halo" style="position: absolute; inset: -7px; border-radius: 50%; background: radial-gradient(circle, rgba(0, 240, 255, 0.45) 0%, rgba(0, 240, 255, 0) 70%); animation: robotPulseGlow 2s infinite ease-in-out;"></div>
+                <div style="position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(135deg, #00f0ff, #0284c7); box-shadow: 0 0 12px #00f0ff, inset 0 0 5px #ffffff; border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center;">
+                    <div style="position: absolute; top: -10px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 11px solid #00f0ff; filter: drop-shadow(0 0 4px #00f0ff);"></div>
+                    <div style="width: 7px; height: 7px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 5px #ffffff;"></div>
+                </div>
+            </div>
+
+            <!-- Live Goal Pose Marker on Floorplan -->
+            <div id="mobile-goal-pose-marker" style="position: absolute; width: 24px; height: 24px; pointer-events: none; z-index: 55; display: none; transform: translate(-50%, -50%); transition: left 0.2s ease, top 0.2s ease;">
+                <div style="position: absolute; inset: -5px; border-radius: 50%; background: rgba(244, 63, 94, 0.4); animation: robotPulseGlow 1.5s infinite ease-in-out;"></div>
+                <div style="position: absolute; inset: 0; border-radius: 50%; background: #f43f5e; box-shadow: 0 0 10px #f43f5e; border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #ffffff; font-weight: 800;">⚑</div>
             </div>
         </div>
     </div>
@@ -518,6 +564,92 @@
         let toastTimer = null;
         let currentMode = "idle";
 
+        // Calibrated Coordinate Transformation: ROS map frame -> UI Map %
+        function worldToUiPercent(wx, wy) {
+            return {
+                x: 1.21273 * wx + 1.50721 * wy + 58.5848,
+                y: 0.84037 * wx - 0.67221 * wy + 36.1863
+            };
+        }
+
+        // Exact inverse affine mapping: UI Floorplan percentage coordinates -> ROS world coordinates (meters)
+        function uiPercentToWorld(ux, uy) {
+            const dx = ux - 58.5848;
+            const dy = uy - 36.1863;
+            return {
+                x: 0.322895 * dx + 0.723985 * dy,
+                y: 0.403670 * dx - 0.582533 * dy
+            };
+        }
+
+        function worldYawToScreenDeg(yawRad) {
+            const hx = Math.cos(yawRad);
+            const hy = Math.sin(yawRad);
+            const u_dx = 1.21273 * hx + 1.50721 * hy;
+            const u_dy = 0.84037 * hx - 0.67221 * hy;
+            return Math.atan2(u_dx, -u_dy) * 180.0 / Math.PI;
+        }
+
+        let mobileClickMode = 'NAV'; // 'NAV' or 'SET_POSE'
+
+        function toggleMobileClickMode() {
+            mobileClickMode = (mobileClickMode === 'NAV') ? 'SET_POSE' : 'NAV';
+            const btn = document.getElementById('btn-mobile-mode-toggle');
+            const icon = document.getElementById('mobile-mode-icon');
+            const label = document.getElementById('mobile-mode-label');
+            if (mobileClickMode === 'SET_POSE') {
+                if (btn) {
+                    btn.style.background = 'rgba(234, 179, 8, 0.25)';
+                    btn.style.borderColor = '#facc15';
+                    btn.style.color = '#fde047';
+                }
+                if (icon) icon.innerText = '📍';
+                if (label) label.innerText = 'Set Pose';
+                showToast('Tap any room or map position to set robot location', '📍');
+            } else {
+                if (btn) {
+                    btn.style.background = 'rgba(56, 189, 248, 0.15)';
+                    btn.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+                    btn.style.color = '#38bdf8';
+                }
+                if (icon) icon.innerText = '🎯';
+                if (label) label.innerText = 'Nav';
+                showToast('Tap any room to navigate', '🚀');
+            }
+        }
+
+        function updateMobileRobotPose(wx, wy, yaw, isConverged, isAmcl) {
+            const ui = worldToUiPercent(wx, wy);
+            const screenRot = worldYawToScreenDeg(yaw);
+
+            const marker = document.getElementById('mobile-robot-pose-marker');
+            if (marker) {
+                marker.style.display = 'block';
+                marker.style.left = ui.x.toFixed(2) + '%';
+                marker.style.top = ui.y.toFixed(2) + '%';
+                marker.style.transform = `translate(-50%, -50%) rotate(${screenRot.toFixed(1)}deg)`;
+
+                const halo = marker.querySelector('.robot-halo');
+                if (halo) {
+                    if (isConverged) {
+                        halo.style.background = 'radial-gradient(circle, rgba(0, 240, 255, 0.45) 0%, rgba(0, 240, 255, 0) 70%)';
+                    } else {
+                        halo.style.background = 'radial-gradient(circle, rgba(234, 179, 8, 0.5) 0%, rgba(234, 179, 8, 0) 70%)';
+                    }
+                }
+            }
+        }
+
+        function updateMobileGoalPose(gx, gy) {
+            const goalMarker = document.getElementById('mobile-goal-pose-marker');
+            if (goalMarker) {
+                const ui = worldToUiPercent(gx, gy);
+                goalMarker.style.display = 'block';
+                goalMarker.style.left = ui.x.toFixed(2) + '%';
+                goalMarker.style.top = ui.y.toFixed(2) + '%';
+            }
+        }
+
         ros.on('connection', () => {
             statusDot.classList.add('connected');
             statusText.innerText = 'Online';
@@ -540,6 +672,45 @@
             messageType: 'std_msgs/String'
         });
 
+        const localizeTriggerPub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/hospobot/trigger_localize',
+            messageType: 'std_msgs/String'
+        });
+
+        const setPoseProxyPub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/hospobot/set_pose_proxy',
+            messageType: 'std_msgs/String'
+        });
+
+        function setRobotInitialPose(wx, wy, yawRad = -0.58) {
+            const msgData = JSON.stringify({ x: wx, y: wy, yaw: yawRad });
+            const poseMsg = new ROSLIB.Message({ data: msgData });
+            setPoseProxyPub.publish(poseMsg);
+            updateMobileRobotPose(wx, wy, yawRad, true, true);
+            showToast(`Robot localized: (${wx.toFixed(1)}m, ${wy.toFixed(1)}m)`, '📍');
+            if (navigator.vibrate) navigator.vibrate(60);
+
+            try {
+                const nomotionSrv = new ROSLIB.Service({
+                    ros: ros,
+                    name: '/request_nomotion_update',
+                    serviceType: 'std_srvs/srv/Empty'
+                });
+                for (let i = 0; i < 4; i++) {
+                    setTimeout(() => {
+                        nomotionSrv.callService(new ROSLIB.ServiceRequest({}), () => {});
+                    }, 250 * (i + 1));
+                }
+            } catch(e) {}
+        }
+
+        function triggerAutoLocalize() {
+            showToast('Running 2D LiDAR Correlative Matcher...', '📡');
+            localizeTriggerPub.publish(new ROSLIB.Message({ data: 'localize' }));
+        }
+
         const currentModeSub = new ROSLIB.Topic({
             ros: ros,
             name: '/hospobot/current_mode',
@@ -550,6 +721,49 @@
             ros: ros,
             name: '/hospobot/mode_status',
             messageType: 'std_msgs/String'
+        });
+
+        // Live Pose Subscribers
+        let hasAmclPose = false;
+        let lastAmclTime = 0;
+        const amclSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/amcl_pose',
+            messageType: 'geometry_msgs/PoseWithCovarianceStamped'
+        });
+        amclSub.subscribe((msg) => {
+            hasAmclPose = true;
+            lastAmclTime = Date.now();
+            const wx = msg.pose.pose.position.x;
+            const wy = msg.pose.pose.position.y;
+            const q = msg.pose.pose.orientation;
+            const siny_cosp = 2 * (q.w * q.z + q.x * q.y);
+            const cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
+            const yaw = Math.atan2(siny_cosp, cosy_cosp);
+
+            const cov = msg.pose.covariance;
+            const varX = (cov && cov.length > 0) ? cov[0] : 10.0;
+            const varY = (cov && cov.length > 7) ? cov[7] : 10.0;
+            const isConverged = (Math.sqrt(Math.max(0, varX) + Math.max(0, varY)) < 0.8);
+
+            updateMobileRobotPose(wx, wy, yaw, isConverged, true);
+        });
+
+        const odomSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/odom',
+            messageType: 'nav_msgs/Odometry'
+        });
+        odomSub.subscribe((msg) => {
+            if (!hasAmclPose || (Date.now() - lastAmclTime > 5000)) {
+                const wx = msg.pose.pose.position.x;
+                const wy = msg.pose.pose.position.y;
+                const q = msg.pose.pose.orientation;
+                const siny_cosp = 2 * (q.w * q.z + q.x * q.y);
+                const cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
+                const yaw = Math.atan2(siny_cosp, cosy_cosp);
+                updateMobileRobotPose(wx, wy, yaw, false, false);
+            }
         });
 
         currentModeSub.subscribe((msg) => {
@@ -694,6 +908,7 @@
             });
 
             goalPub.publish(poseMsg);
+            updateMobileGoalPose(room.x || 0.0, room.y || 0.0);
             showToast(`Calling robot to ${roomName}...`, '🚀');
 
             if (navigator.vibrate) {
@@ -708,6 +923,21 @@
                 roomData = data;
                 const overlay = document.getElementById('hotspot-overlay');
                 const chips = document.getElementById('chips-container');
+                const mapWrapper = document.querySelector('.map-wrapper');
+
+                // Tap directly on map when in SET_POSE mode
+                if (mapWrapper && !mapWrapper._hasClickListener) {
+                    mapWrapper._hasClickListener = true;
+                    mapWrapper.addEventListener('click', (e) => {
+                        if (mobileClickMode === 'SET_POSE') {
+                            const rect = mapWrapper.getBoundingClientRect();
+                            const clickX = ((e.clientX - rect.left) / rect.width) * 100;
+                            const clickY = ((e.clientY - rect.top) / rect.height) * 100;
+                            const wCoord = uiPercentToWorld(clickX, clickY);
+                            setRobotInitialPose(wCoord.x, wCoord.y, -0.58);
+                        }
+                    });
+                }
 
                 for (const [roomName, info] of Object.entries(roomData)) {
                     // Create Hotspot on Map
@@ -715,7 +945,7 @@
                     const hotspot = document.createElement('div');
                     hotspot.className = 'room-hotspot';
                     hotspot.dataset.room = roomName;
-                    hotspot.title = `Call HospoBot to ${roomName}`;
+                    hotspot.title = `Room ${roomName}`;
 
                     hotspot.style.left = `${ui.left}%`;
                     hotspot.style.top = `${ui.top}%`;
@@ -735,7 +965,11 @@
 
                     hotspot.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        callRobotToRoom(roomName);
+                        if (mobileClickMode === 'SET_POSE') {
+                            setRobotInitialPose(info.x, info.y, info.theta || -0.58);
+                        } else {
+                            callRobotToRoom(roomName);
+                        }
                     });
 
                     overlay.appendChild(hotspot);
@@ -746,7 +980,11 @@
                     chip.dataset.room = roomName;
                     chip.innerText = roomName;
                     chip.addEventListener('click', () => {
-                        callRobotToRoom(roomName);
+                        if (mobileClickMode === 'SET_POSE') {
+                            setRobotInitialPose(info.x, info.y, info.theta || -0.58);
+                        } else {
+                            callRobotToRoom(roomName);
+                        }
                     });
                     chips.appendChild(chip);
                 }

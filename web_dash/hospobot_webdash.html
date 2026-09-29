@@ -184,6 +184,32 @@
             overflow-x: hidden;
         }
 
+        @keyframes robotPulseGlow {
+            0% { transform: scale(0.9); opacity: 0.5; }
+            50% { transform: scale(1.35); opacity: 0.95; }
+            100% { transform: scale(0.9); opacity: 0.5; }
+        }
+
+        .btn-localize-header {
+            font-size: 0.75rem;
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            border-radius: 20px;
+            padding: 3px 10px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .btn-localize-header:hover {
+            background: rgba(56, 189, 248, 0.3);
+            border-color: #38bdf8;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+        }
+
         /* --- VIEW 1: ROS NETWORK --- */
         .network-header {
             margin: 30px 0 40px 0;
@@ -1907,6 +1933,40 @@
             top: 50%;
             transform: translateY(-50%);
         }
+
+        /* Toast Notification */
+        .webdash-toast {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(56, 189, 248, 0.6);
+            color: #f8fafc;
+            padding: 14px 22px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 15px rgba(56, 189, 248, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            z-index: 10000;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .webdash-toast.show {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .webdash-toast-icon {
+            font-size: 1.4rem;
+        }
     </style>
 </head>
 
@@ -1986,12 +2046,35 @@
             <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; flex-shrink: 0;">
                 <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 400px;">
                     <h3 style="color: #f8fafc; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.5px; margin: 0;">Hospital Floorplan</h3>
-                    <span style="font-size: 0.75rem; color: #10b981; background: rgba(16, 185, 129, 0.15); padding: 3px 8px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.3);">● Click Room to Call</span>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button id="btn-re-localize" class="btn-localize-header" onclick="triggerAutoLocalize()" title="Run AMCL Auto-Localization with 2D LiDAR">
+                            <span>📡</span> <span>Auto-Localize</span>
+                        </button>
+                        <button id="btn-map-mode" onclick="toggleMapClickMode()" style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s;" title="Switch between Calling the robot and Setting the robot's current position">
+                            <span id="map-mode-icon">🎯</span> <span id="map-mode-label">Navigate</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="status-map-container" style="position: relative; height: calc(100vh - 150px); max-height: 780px; aspect-ratio: 512 / 1024; width: auto; background: rgba(10, 16, 30, 0.7); border-radius: 16px; border: 1px solid rgba(56, 189, 248, 0.25); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7); overflow: hidden; display: flex; align-items: center; justify-content: center;">
                     <img src="ui_map_dark.png" alt="Hospital Layout" class="map-bg-img" style="width: 100%; height: 100%; object-fit: fill; display: block; filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.2));">
                     <div class="hotspot-overlay" id="status-map-hotspots" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: auto;">
                         <!-- Injected via rooms.json -->
+                    </div>
+
+                    <!-- Live Robot Pose Marker on Floorplan -->
+                    <div id="robot-pose-marker" style="position: absolute; width: 34px; height: 34px; pointer-events: none; z-index: 60; display: none; transform: translate(-50%, -50%) rotate(0deg); transition: left 0.12s linear, top 0.12s linear, transform 0.12s linear;">
+                        <div class="robot-halo" style="position: absolute; inset: -8px; border-radius: 50%; background: radial-gradient(circle, rgba(0, 240, 255, 0.45) 0%, rgba(0, 240, 255, 0) 70%); animation: robotPulseGlow 2s infinite ease-in-out;"></div>
+                        <div style="position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(135deg, #00f0ff, #0284c7); box-shadow: 0 0 14px #00f0ff, inset 0 0 6px #ffffff; border: 2.5px solid #ffffff; display: flex; align-items: center; justify-content: center;">
+                            <!-- Heading Nose / Direction Arrow -->
+                            <div style="position: absolute; top: -11px; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 12px solid #00f0ff; filter: drop-shadow(0 0 4px #00f0ff);"></div>
+                            <div style="width: 8px; height: 8px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 6px #ffffff;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Live Goal Pose Marker on Floorplan -->
+                    <div id="goal-pose-marker" style="position: absolute; width: 26px; height: 26px; pointer-events: none; z-index: 55; display: none; transform: translate(-50%, -50%); transition: left 0.2s ease, top 0.2s ease;">
+                        <div style="position: absolute; inset: -6px; border-radius: 50%; background: rgba(244, 63, 94, 0.4); animation: robotPulseGlow 1.5s infinite ease-in-out;"></div>
+                        <div style="position: absolute; inset: 0; border-radius: 50%; background: #f43f5e; box-shadow: 0 0 12px #f43f5e; border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #ffffff; font-weight: 800;">⚑</div>
                     </div>
                 </div>
             </div>
@@ -2737,23 +2820,144 @@
         </div>
     </div>
 
+    <!-- Toast Notification -->
+    <div id="webdash-toast" class="webdash-toast">
+        <span id="webdash-toast-icon" class="webdash-toast-icon">📍</span>
+        <span id="webdash-toast-msg">Notification</span>
+    </div>
+
     <script>
-        // --- MAP CALIBRATION ---
-        // Tune these values to align the robot's physical coordinates with the image
-        // MAP_ORIGIN is the pixel offset from the center of the slam-map container
-        const MAP_SCALE_PX_PER_METER = 100.0;
-        const MAP_ORIGIN_X_PX = 0;
-        const MAP_ORIGIN_Y_PX = 0;
-        const MAP_ROTATION_OFFSET_DEG = 0;
+        let toastTimeout = null;
+        function showNotification(msg, icon = 'ℹ️') {
+            const toast = document.getElementById('webdash-toast');
+            const toastMsg = document.getElementById('webdash-toast-msg');
+            const toastIcon = document.getElementById('webdash-toast-icon');
+            if (toast && toastMsg) {
+                if (toastIcon) toastIcon.innerText = icon;
+                toastMsg.innerHTML = msg;
+                toast.classList.add('show');
+                clearTimeout(toastTimeout);
+                toastTimeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3500);
+            }
+            console.log(`[WebDash] ${icon} ${msg}`);
+        }
+        const showToast = showNotification;
+
+        // --- CALIBRATED MAP COORDINATE TRANSFORMATION ---
+        // Maps ROS world coordinates (map frame in meters) to UI Floorplan percentage coordinates (ui_map_dark.png)
+        function worldToUiPercent(wx, wy) {
+            return {
+                x: 1.21273 * wx + 1.50721 * wy + 58.5848,
+                y: 0.84037 * wx - 0.67221 * wy + 36.1863
+            };
+        }
+
+        // Exact inverse affine mapping: UI Floorplan percentage coordinates -> ROS world coordinates (meters)
+        function uiPercentToWorld(ux, uy) {
+            const dx = ux - 58.5848;
+            const dy = uy - 36.1863;
+            return {
+                x: 0.322895 * dx + 0.723985 * dy,
+                y: 0.403670 * dx - 0.582533 * dy
+            };
+        }
+
+        // Transforms robot world heading (yaw in radians) to UI screen rotation (0deg = North / Top, 180deg = South / Bottom)
+        function worldYawToScreenDeg(yawRad) {
+            const hx = Math.cos(yawRad);
+            const hy = Math.sin(yawRad);
+            const u_dx = 1.21273 * hx + 1.50721 * hy;
+            const u_dy = 0.84037 * hx - 0.67221 * hy;
+            return Math.atan2(u_dx, -u_dy) * 180.0 / Math.PI;
+        }
+
+        let mapClickMode = 'NAV'; // 'NAV' or 'SET_POSE'
+
+        function toggleMapClickMode() {
+            mapClickMode = (mapClickMode === 'NAV') ? 'SET_POSE' : 'NAV';
+            const btn = document.getElementById('btn-map-mode');
+            const icon = document.getElementById('map-mode-icon');
+            const label = document.getElementById('map-mode-label');
+            if (mapClickMode === 'SET_POSE') {
+                if (btn) {
+                    btn.style.background = 'rgba(234, 179, 8, 0.25)';
+                    btn.style.borderColor = '#facc15';
+                    btn.style.color = '#fde047';
+                    btn.style.boxShadow = '0 0 12px rgba(234, 179, 8, 0.4)';
+                }
+                if (icon) icon.innerText = '📍';
+                if (label) label.innerText = 'Set Pose';
+                showNotification('Click any room or map location to SET the robot\'s current position.');
+            } else {
+                if (btn) {
+                    btn.style.background = 'rgba(30, 41, 59, 0.8)';
+                    btn.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+                    btn.style.color = '#38bdf8';
+                    btn.style.boxShadow = 'none';
+                }
+                if (icon) icon.innerText = '🎯';
+                if (label) label.innerText = 'Navigate';
+                showNotification('Click any room to navigate.');
+            }
+        }
 
         // --- GLOBAL VARIABLES ---
         let pose = { x: 0, y: 0, theta: 0 };
-        let goalPose = { x: 600, y: 0 };
+        let goalPose = { x: 0, y: 0 };
         let navState = 'IDLE';
         let driveState = 'ARMED';
         let linVel = 0.00, angVel = 0.00;
         let currentPath = [];
         let lines = []; let stoppedEntities = {};
+        let hasAmclPose = false;
+        let lastAmclTime = 0;
+
+        function updateRobotPoseDisplay(wx, wy, yaw, isConverged, isAmcl) {
+            const ui = worldToUiPercent(wx, wy);
+            const screenRot = worldYawToScreenDeg(yaw);
+
+            const marker = document.getElementById('robot-pose-marker');
+            if (marker) {
+                marker.style.display = 'block';
+                marker.style.left = ui.x.toFixed(2) + '%';
+                marker.style.top = ui.y.toFixed(2) + '%';
+                marker.style.transform = `translate(-50%, -50%) rotate(${screenRot.toFixed(1)}deg)`;
+
+                const halo = marker.querySelector('.robot-halo');
+                if (halo) {
+                    if (isConverged) {
+                        halo.style.background = 'radial-gradient(circle, rgba(0, 240, 255, 0.45) 0%, rgba(0, 240, 255, 0) 70%)';
+                    } else {
+                        halo.style.background = 'radial-gradient(circle, rgba(234, 179, 8, 0.5) 0%, rgba(234, 179, 8, 0) 70%)';
+                    }
+                }
+            }
+
+            const poseEl = document.getElementById('status-current-pose');
+            if (poseEl) {
+                const deg = Math.round(yaw * 180 / Math.PI);
+                const statusTag = isAmcl
+                    ? (isConverged ? ' <span style="color:#00e676;font-size:0.75rem;font-weight:700;">[LOCALIZED]</span>' : ' <span style="color:#facc15;font-size:0.75rem;font-weight:700;">[LOCALIZING...]</span>')
+                    : ' <span style="color:#94a3b8;font-size:0.75rem;">[ODOM]</span>';
+                poseEl.innerHTML = `X: ${wx.toFixed(2)}m | Y: ${wy.toFixed(2)}m | θ: ${deg}°${statusTag}`;
+            }
+        }
+
+        function updateGoalPoseDisplay(gx, gy) {
+            const goalMarker = document.getElementById('goal-pose-marker');
+            if (goalMarker) {
+                const ui = worldToUiPercent(gx, gy);
+                goalMarker.style.display = 'block';
+                goalMarker.style.left = ui.x.toFixed(2) + '%';
+                goalMarker.style.top = ui.y.toFixed(2) + '%';
+            }
+            const goalEl = document.getElementById('status-goal-pose');
+            if (goalEl) {
+                goalEl.innerText = `X: ${gx.toFixed(2)}m | Y: ${gy.toFixed(2)}m`;
+            }
+        }
 
         // --- ROS CONNECTION ---
         const ros = new ROSLIB.Ros({
@@ -2835,10 +3039,80 @@
         const stateLPub = new ROSLIB.Topic({ ros: ros, name: '/odesc_hardware/state_left', messageType: 'std_msgs/String' });
         const stateRPub = new ROSLIB.Topic({ ros: ros, name: '/odesc_hardware/state_right', messageType: 'std_msgs/String' });
         const settingsPub = new ROSLIB.Topic({ ros: ros, name: '/odesc_hardware/settings', messageType: 'std_msgs/String' });
+        const localizeTriggerPub = new ROSLIB.Topic({ ros: ros, name: '/hospobot/trigger_localize', messageType: 'std_msgs/String' });
+        const setPoseProxyPub = new ROSLIB.Topic({ ros: ros, name: '/hospobot/set_pose_proxy', messageType: 'std_msgs/String' });
 
+        function setRobotInitialPose(wx, wy, yawRad = -0.58) {
+            const msgData = JSON.stringify({ x: wx, y: wy, yaw: yawRad });
+            const poseMsg = new ROSLIB.Message({ data: msgData });
+            setPoseProxyPub.publish(poseMsg);
+            updateRobotPoseDisplay(wx, wy, yawRad, true, true);
+            console.log(`[PoseSet] Initial pose published: (${wx.toFixed(2)}, ${wy.toFixed(2)}, yaw=${(yawRad * 180 / Math.PI).toFixed(1)}°)`);
+            showNotification(`📍 Set robot pose to (${wx.toFixed(1)}m, ${wy.toFixed(1)}m)`);
 
-        // if door -> dont explode
+            // Request 4 quick nomotion updates to lock AMCL particle cloud
+            try {
+                const nomotionSrv = new ROSLIB.Service({
+                    ros: ros,
+                    name: '/request_nomotion_update',
+                    serviceType: 'std_srvs/srv/Empty'
+                });
+                for (let i = 0; i < 4; i++) {
+                    setTimeout(() => {
+                        nomotionSrv.callService(new ROSLIB.ServiceRequest({}), () => {});
+                    }, 250 * (i + 1));
+                }
+            } catch (e) {}
+        }
+
+        function triggerAutoLocalize() {
+            const btn = document.getElementById('btn-re-localize');
+            if (btn) {
+                btn.style.opacity = '0.5';
+                btn.innerHTML = '<span>⏳</span> <span>Scanning...</span>';
+            }
+            showNotification('Running 2D LiDAR Correlative Floorplan Matcher...');
+            const msg = new ROSLIB.Message({ data: 'localize' });
+            localizeTriggerPub.publish(msg);
+
+            setTimeout(() => {
+                if (btn) {
+                    btn.style.opacity = '1';
+                    btn.innerHTML = '<span>📡</span> <span>Auto-Localize</span>';
+                }
+            }, 3000);
+        }
+
         // ROS Subscribers
+        const amclSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/amcl_pose',
+            messageType: 'geometry_msgs/PoseWithCovarianceStamped'
+        });
+        amclSub.subscribe(function (msg) {
+            hasAmclPose = true;
+            lastAmclTime = Date.now();
+            const wx = msg.pose.pose.position.x;
+            const wy = msg.pose.pose.position.y;
+            const q = msg.pose.pose.orientation;
+            const siny_cosp = 2 * (q.w * q.z + q.x * q.y);
+            const cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
+            const yaw = Math.atan2(siny_cosp, cosy_cosp);
+
+            const cov = msg.pose.covariance;
+            const varX = (cov && cov.length > 0) ? cov[0] : 10.0;
+            const varY = (cov && cov.length > 7) ? cov[7] : 10.0;
+            const posStd = Math.sqrt(Math.max(0, varX) + Math.max(0, varY));
+            const isConverged = (posStd < 0.8);
+
+            pose.x = wx * 100;
+            pose.y = wy * 100;
+            pose.theta = yaw * (180 / Math.PI);
+            if (pose.theta < 0) pose.theta += 360;
+
+            updateRobotPoseDisplay(wx, wy, yaw, isConverged, true);
+        });
+
         const odomSub = new ROSLIB.Topic({ ros: ros, name: '/odom', messageType: 'nav_msgs/Odometry' });
         odomSub.subscribe(function (msg) {
             linVel = msg.twist.twist.linear.x;
@@ -2853,6 +3127,13 @@
             let yaw = Math.atan2(siny_cosp, cosy_cosp);
             pose.theta = yaw * (180 / Math.PI);
             if (pose.theta < 0) pose.theta += 360;
+
+            // Fallback if AMCL has not yet established position
+            if (!hasAmclPose || (Date.now() - lastAmclTime > 5000)) {
+                const wx = msg.pose.pose.position.x;
+                const wy = msg.pose.pose.position.y;
+                updateRobotPoseDisplay(wx, wy, yaw, false, false);
+            }
 
             updateEgoCentricView();
 
@@ -3274,29 +3555,8 @@
 
         function updateEgoCentricView() {
             if (!document.getElementById('view-status').classList.contains('active')) return;
-
-            // Map is static, robot moves and rotates
-            // mapWrapper.style.transform = `rotate(${pose.theta - 90}deg)`;
-            // slamMap.style.transform = `translate(${-pose.x}px, ${pose.y}px)`;
-
-            const robotModel = document.getElementById('robot-model');
-            if (robotModel) {
-                const poseXMeters = pose.x / 100.0;
-                const poseYMeters = pose.y / 100.0;
-
-                // Calculate pixel coordinates using the calibration constants
-                const pixelX = MAP_ORIGIN_X_PX + (poseXMeters * MAP_SCALE_PX_PER_METER);
-                // Invert Y because CSS screen coordinates go down, while ROS goes up
-                const pixelY = MAP_ORIGIN_Y_PX - (poseYMeters * MAP_SCALE_PX_PER_METER);
-                const displayTheta = (90 - pose.theta) + MAP_ROTATION_OFFSET_DEG;
-
-                robotModel.style.transform = `translate(${pixelX}px, ${pixelY}px) rotate(${displayTheta}deg) scale(0.25)`;
-            }
-
-            document.getElementById('status-current-pose').innerText = `X: ${(pose.x / 100).toFixed(2)} | Y: ${(pose.y / 100).toFixed(2)} | θ: ${Math.round(pose.theta)}°`;
-            document.getElementById('status-goal-pose').innerText = `X: ${(goalPose.x / 100).toFixed(2)} | Y: ${(goalPose.y / 100).toFixed(2)}`;
-            document.getElementById('status-nav-state').innerText = navState;
-
+            const navStateEl = document.getElementById('status-nav-state');
+            if (navStateEl) navStateEl.innerText = navState;
             drawPathOverlay();
         }
 
@@ -3620,9 +3880,24 @@
         function initMapHotspots() {
             const overlay = document.getElementById('status-map-hotspots');
             const list = document.getElementById('status-rooms-list');
+            const mapContainer = document.querySelector('.status-map-container');
             if (!overlay) return;
             overlay.innerHTML = '';
             if (list) list.innerHTML = '';
+
+            // Handle direct map clicks when in SET_POSE mode
+            if (mapContainer && !mapContainer._hasClickListener) {
+                mapContainer._hasClickListener = true;
+                mapContainer.addEventListener('click', (e) => {
+                    if (mapClickMode === 'SET_POSE') {
+                        const rect = mapContainer.getBoundingClientRect();
+                        const clickX = ((e.clientX - rect.left) / rect.width) * 100;
+                        const clickY = ((e.clientY - rect.top) / rect.height) * 100;
+                        const wCoord = uiPercentToWorld(clickX, clickY);
+                        setRobotInitialPose(wCoord.x, wCoord.y, -0.58);
+                    }
+                });
+            }
 
             for (const [roomName, info] of Object.entries(roomsConfig)) {
                 const ui = info.ui || { left: 0, top: 0, width: 10, height: 4 };
@@ -3635,7 +3910,7 @@
                 spot.style.top = `${ui.top}%`;
                 spot.style.width = `${ui.width}%`;
                 spot.style.height = `${ui.height}%`;
-                spot.title = `Call robot to ${roomName}`;
+                spot.title = `Room ${roomName}`;
 
                 // Visible room number label
                 const label = document.createElement('span');
@@ -3650,18 +3925,55 @@
 
                 spot.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    navigateToRoom(roomName);
+                    if (mapClickMode === 'SET_POSE') {
+                        setRobotInitialPose(info.x, info.y, info.theta || -0.58);
+                    } else {
+                        navigateToRoom(roomName);
+                    }
                 });
                 overlay.appendChild(spot);
 
-                // Button in the destinations list
+                // Button in the destinations list with direct Set Pose button
                 if (list) {
+                    const row = document.createElement('div');
+                    row.className = 'room-card-wrapper';
+                    row.style.display = 'flex';
+                    row.style.gap = '4px';
+                    row.style.alignItems = 'stretch';
+                    row.style.width = '100%';
+
                     const btn = document.createElement('button');
                     btn.className = 'room-sel-btn';
                     btn.dataset.room = roomName;
                     btn.innerText = roomName;
-                    btn.addEventListener('click', () => navigateToRoom(roomName));
-                    list.appendChild(btn);
+                    btn.style.flex = '1';
+                    btn.addEventListener('click', () => {
+                        if (mapClickMode === 'SET_POSE') {
+                            setRobotInitialPose(info.x, info.y, info.theta || -0.58);
+                        } else {
+                            navigateToRoom(roomName);
+                        }
+                    });
+
+                    const pinBtn = document.createElement('button');
+                    pinBtn.title = `Set robot position to ${roomName}`;
+                    pinBtn.innerText = '📍';
+                    pinBtn.style.background = 'rgba(234, 179, 8, 0.15)';
+                    pinBtn.style.border = '1px solid rgba(234, 179, 8, 0.4)';
+                    pinBtn.style.color = '#facc15';
+                    pinBtn.style.borderRadius = '10px';
+                    pinBtn.style.padding = '0 8px';
+                    pinBtn.style.cursor = 'pointer';
+                    pinBtn.style.fontSize = '0.9rem';
+                    pinBtn.style.transition = 'all 0.2s';
+                    pinBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        setRobotInitialPose(info.x, info.y, info.theta || -0.58);
+                    });
+
+                    row.appendChild(btn);
+                    row.appendChild(pinBtn);
+                    list.appendChild(row);
                 }
             }
         }
@@ -3715,6 +4027,7 @@
                 }
             });
             goalPub.publish(poseMsg);
+            updateGoalPoseDisplay(room.x || 0.0, room.y || 0.0);
 
             // Update info card
             const goalEl = document.getElementById('status-goal-pose');
@@ -3745,6 +4058,7 @@
                 }
             });
             goalPub.publish(poseMsg);
+            updateGoalPoseDisplay(x, y);
 
             goalPose = { x: x * 100, y: y * 100 };
             navState = 'NAVIGATING';

@@ -36,12 +36,23 @@ if "ROS_DOMAIN_ID" not in os.environ:
 
 try:
     import rclpy
-    from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
+    from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy, qos_profile_sensor_data
     from std_msgs.msg import String
-    from geometry_msgs.msg import PoseWithCovarianceStamped
+    from geometry_msgs.msg import Twist, PoseWithCovarianceStamped
+    from sensor_msgs.msg import LaserScan
+    from std_srvs.srv import Empty as EmptySrv
+    import threading
     HAVE_ROS = True
 except ImportError:
     HAVE_ROS = False
+
+try:
+    from odesc_hardware.scan_matcher import CorrelativeScanMatcher
+except ImportError:
+    try:
+        from scan_matcher import CorrelativeScanMatcher
+    except ImportError:
+        CorrelativeScanMatcher = None
 
 # ──────────────────────────────────────────────────────────────────────────────
 # ODrive serial helper (O_NONBLOCK, same as before)
@@ -230,7 +241,7 @@ class PowerPollThread(QThread):
 # ──────────────────────────────────────────────────────────────────────────────
 class DesktopRosSyncThread(QThread):
     mode_command_received = pyqtSignal(str, str)  # (mode, map_name)
-    localized_signal = pyqtSignal(float, float, float)  # (x, y, yaw)
+    localized_signal = pyqtSignal(float, float, float, bool)  # (x, y, yaw, is_converged)
 
     def __init__(self, main_win=None):
         super().__init__()
@@ -240,8 +251,16 @@ class DesktopRosSyncThread(QThread):
         self._status_pub = None
         self._status_pub_latched = None
         self._mode_status_pub = None
-        self._initpose_pub = None
-        self._initpose_pub_volatile = None
+        self._initialpose_pub = None
+        self._is_localizing = False
+        self._localized_confirmed = False
+        self._last_scan = None
+        self._scan_matcher = None
+        if CorrelativeScanMatcher is not None:
+            try:
+                self._scan_matcher = CorrelativeScanMatcher()
+            except Exception as e:
+                print(f"[DesktopRosSync] Failed to initialize CorrelativeScanMatcher: {e}")
 
     def run(self):
         with open("/tmp/debug_sync.log", "a") as f:
@@ -265,8 +284,14 @@ class DesktopRosSyncThread(QThread):
             self._status_pub = self._node.create_publisher(String, '/hospobot/current_mode', 10)
             self._status_pub_latched = self._node.create_publisher(String, '/hospobot/current_mode_latched', qos_latched)
             self._mode_status_pub = self._node.create_publisher(String, '/hospobot/mode_status', qos_latched)
-            self._initpose_pub = self._node.create_publisher(PoseWithCovarianceStamped, '/initialpose', qos_latched)
-            self._initpose_pub_volatile = self._node.create_publisher(PoseWithCovarianceStamped, '/initialpose', 10)
+            self._initialpose_pub = self._node.create_publisher(PoseWithCovarianceStamped, '/initialpose', 10)
+            self._cmd_vel_pub = self._node.create_publisher(Twist, '/cmd_vel_web', 10)
+
+            def _on_scan(msg):
+                self._last_scan = msg
+
+            self._node.create_subscription(LaserScan, '/scan', _on_scan, qos_profile_sensor_data)
+            self._node.create_subscription(LaserScan, '/scan_raw', _on_scan, qos_profile_sensor_data)
 
             def _on_cmd(msg):
                 try:
@@ -281,6 +306,55 @@ class DesktopRosSyncThread(QThread):
             self._node.create_subscription(String, '/hospobot/set_mode', _on_cmd, 10)
             self._node.create_subscription(String, '/hospobot/mode_cmd', _on_cmd, 10)
 
+            def _on_trigger_loc(msg):
+                print("[DesktopRosSync] Received request on /hospobot/trigger_localize")
+                self.trigger_auto_localize()
+
+            self._node.create_subscription(String, '/hospobot/trigger_localize', _on_trigger_loc, 10)
+
+            def _on_set_pose_proxy(msg):
+                try:
+                    data = json.loads(msg.data)
+                    bx = float(data.get('x', 0.0))
+                    by = float(data.get('y', 0.0))
+                    byaw = float(data.get('yaw', 0.0))
+                    
+                    init_msg = PoseWithCovarianceStamped()
+                    init_msg.header.stamp = self._node.get_clock().now().to_msg()
+                    init_msg.header.frame_id = 'map'
+                    init_msg.pose.pose.position.x = bx
+                    init_msg.pose.pose.position.y = by
+                    init_msg.pose.pose.position.z = 0.0
+                    
+                    half_yaw = byaw * 0.5
+                    init_msg.pose.pose.orientation.z = math.sin(half_yaw)
+                    init_msg.pose.pose.orientation.w = math.cos(half_yaw)
+                    
+                    cov = [0.0] * 36
+                    cov[0] = 0.08
+                    cov[7] = 0.08
+                    cov[35] = 0.04
+                    init_msg.pose.covariance = cov
+                    
+                    if self._initialpose_pub:
+                        self._initialpose_pub.publish(init_msg)
+                        print(f"[DesktopRosSync] Proxy published initialpose: ({bx:.2f}, {by:.2f}, yaw={math.degrees(byaw):.1f}°)")
+                        
+                        # Trigger nomotion update
+                        try:
+                            nomotion_client = self._node.create_client(EmptySrv, '/request_nomotion_update')
+                            if nomotion_client.wait_for_service(timeout_sec=0.2):
+                                for _ in range(2):
+                                    req = EmptySrv.Request()
+                                    nomotion_client.call_async(req)
+                                    time.sleep(0.05)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    print(f"[DesktopRosSync] Error in set_pose_proxy: {e}")
+
+            self._node.create_subscription(String, '/hospobot/set_pose_proxy', _on_set_pose_proxy, 10)
+
             def _on_amcl_pose(msg):
                 try:
                     px = msg.pose.pose.position.x
@@ -288,7 +362,20 @@ class DesktopRosSyncThread(QThread):
                     qz = msg.pose.pose.orientation.z
                     qw = msg.pose.pose.orientation.w
                     yaw = 2.0 * math.atan2(qz, qw)
-                    self.localized_signal.emit(px, py, yaw)
+
+                    # Compute position uncertainty from covariance matrix
+                    cov = msg.pose.covariance
+                    var_x = cov[0] if (cov and len(cov) > 0) else 999.0
+                    var_y = cov[7] if (cov and len(cov) > 7) else 999.0
+                    pos_std = math.sqrt(max(0.0, var_x) + max(0.0, var_y))
+
+                    # AMCL has converged when spatial uncertainty is bounded (std < 0.7m)
+                    is_converged = (pos_std < 0.7)
+                    if is_converged:
+                        self._localized_confirmed = True
+                        self._is_localizing = False
+
+                    self.localized_signal.emit(px, py, yaw, is_converged)
                 except Exception:
                     pass
 
@@ -336,33 +423,125 @@ class DesktopRosSyncThread(QThread):
         except Exception:
             pass
 
-    def pulse_initial_pose(self):
-        """Pushes initial pose (0, 0, 0) to AMCL on /initialpose with both latched and volatile QoS."""
+    def trigger_auto_localize(self):
+        """Uses 2D LiDAR correlative scan matching to seed AMCL, then executes an active in-place spin for 100% convergence."""
         if not self._node:
             return
-        msg = PoseWithCovarianceStamped()
-        msg.header.frame_id = 'map'
-        msg.header.stamp = self._node.get_clock().now().to_msg()
-        msg.pose.pose.position.x = 0.0
-        msg.pose.pose.position.y = 0.0
-        msg.pose.pose.position.z = 0.0
-        msg.pose.pose.orientation.x = 0.0
-        msg.pose.pose.orientation.y = 0.0
-        msg.pose.pose.orientation.z = 0.0
-        msg.pose.pose.orientation.w = 1.0
-        cov = [0.0] * 36
-        cov[0] = 0.25      # X covariance (0.5m)
-        cov[7] = 0.25      # Y covariance (0.5m)
-        cov[35] = 0.0685   # Yaw covariance (~15 deg)
-        msg.pose.covariance = cov
-        try:
-            if self._initpose_pub:
-                self._initpose_pub.publish(msg)
-            if self._initpose_pub_volatile:
-                self._initpose_pub_volatile.publish(msg)
-            print("[DesktopRosSync] Auto-localization: published /initialpose (x=0, y=0, yaw=0)")
-        except Exception as e:
-            print(f"[DesktopRosSync] Error publishing initial pose: {e}")
+        self._localized_confirmed = False
+        self._is_localizing = True
+
+        def _localize_worker():
+            print("[DesktopRosSync] Auto-localization initiated (Dense 2D LiDAR correlative matcher + Active Spin)...")
+            matched_pose = None
+
+            # Wait briefly for a fresh scan if none received yet
+            t0 = time.time()
+            while self._last_scan is None and (time.time() - t0) < 2.5:
+                time.sleep(0.1)
+
+            if self._scan_matcher and self._last_scan is not None:
+                try:
+                    print(f"[DesktopRosSync] Evaluating dense 2D LiDAR scan ({len(self._last_scan.ranges)} beams) against {len(self._scan_matcher.candidates)} candidates...")
+                    res = self._scan_matcher.match_laserscan(self._last_scan, is_lidar_backward=True)
+                    if res is not None:
+                        bx, by, byaw, score, label = res
+                        print(f"[DesktopRosSync] Correlative match found: {label} at ({bx:.2f}, {by:.2f}, yaw={math.degrees(byaw):.1f}°), score={score:.1f}")
+                        matched_pose = (bx, by, byaw, label)
+                except Exception as e:
+                    print(f"[DesktopRosSync] Error during scan matching: {e}")
+
+            if matched_pose is not None:
+                bx, by, byaw, label = matched_pose
+                print(f"[DesktopRosSync] Seeding AMCL particle cloud at {label} ({bx:.2f}, {by:.2f}, yaw={math.degrees(byaw):.1f}°)...")
+                init_msg = PoseWithCovarianceStamped()
+                init_msg.header.stamp = self._node.get_clock().now().to_msg()
+                init_msg.header.frame_id = 'map'
+                init_msg.pose.pose.position.x = float(bx)
+                init_msg.pose.pose.position.y = float(by)
+                init_msg.pose.pose.position.z = 0.0
+
+                half_yaw = byaw * 0.5
+                init_msg.pose.pose.orientation.z = math.sin(half_yaw)
+                init_msg.pose.pose.orientation.w = math.cos(half_yaw)
+
+                cov = [0.0] * 36
+                cov[0] = 0.08   # Var(x) ~ 0.28m std
+                cov[7] = 0.08   # Var(y) ~ 0.28m std
+                cov[35] = 0.04  # Var(yaw) ~ 11 deg std
+                init_msg.pose.covariance = cov
+
+                if self._initialpose_pub:
+                    self._initialpose_pub.publish(init_msg)
+                    print(f"[DesktopRosSync] Successfully published initialpose to /initialpose")
+
+                # Trigger immediate nomotion updates to lock the particle cloud
+                try:
+                    nomotion_client = self._node.create_client(EmptySrv, '/request_nomotion_update')
+                    if nomotion_client.wait_for_service(timeout_sec=0.5):
+                        for _ in range(3):
+                            req = EmptySrv.Request()
+                            nomotion_client.call_async(req)
+                            time.sleep(0.05)
+                except Exception:
+                    pass
+            else:
+                print("[DesktopRosSync] Fallback: triggering AMCL /reinitialize_global_localization...")
+                try:
+                    global_client = self._node.create_client(EmptySrv, '/reinitialize_global_localization')
+                    if not global_client.wait_for_service(timeout_sec=1.5):
+                        global_client = self._node.create_client(EmptySrv, '/amcl/reinitialize_global_localization')
+                        global_client.wait_for_service(timeout_sec=1.0)
+
+                    if global_client.service_is_ready():
+                        req = EmptySrv.Request()
+                        global_client.call_async(req)
+                        print("[DesktopRosSync] Dispersed AMCL particles uniformly across map free space.")
+                except Exception as e:
+                    print(f"[DesktopRosSync] Error in global dispersal fallback: {e}")
+
+            time.sleep(0.4)
+
+            # Active In-Place Spin (Gold Standard AMCL Relocalization)
+            # Slowly rotate in place (0.32 rad/s) so AMCL odometry + continuous 360° laser sweep eliminate any symmetry ambiguity
+            print("[DesktopRosSync] Starting active in-place localization rotation (360° sweep)...")
+            spin_speed = 0.32  # rad/s (~18s for full circle)
+            t_spin_start = time.time()
+            max_spin_time = 18.0
+
+            try:
+                spin_twist = Twist()
+                spin_twist.angular.z = spin_speed
+                
+                nomotion_client = self._node.create_client(EmptySrv, '/request_nomotion_update')
+                has_nomotion = nomotion_client.wait_for_service(timeout_sec=0.5)
+
+                while self._running and (time.time() - t_spin_start) < max_spin_time:
+                    if self._localized_confirmed:
+                        print("[DesktopRosSync] AMCL particle filter converged with high confidence! Stopping spin.")
+                        break
+                    
+                    if self._cmd_vel_pub:
+                        self._cmd_vel_pub.publish(spin_twist)
+
+                    if has_nomotion and (int((time.time() - t_spin_start) * 10) % 4 == 0):
+                        req = EmptySrv.Request()
+                        nomotion_client.call_async(req)
+
+                    time.sleep(0.1)
+            except Exception as e:
+                print(f"[DesktopRosSync] Error during localization spin: {e}")
+            finally:
+                # Guarantee full stop
+                stop_twist = Twist()
+                stop_twist.linear.x = 0.0
+                stop_twist.angular.z = 0.0
+                if self._cmd_vel_pub:
+                    for _ in range(4):
+                        self._cmd_vel_pub.publish(stop_twist)
+                        time.sleep(0.04)
+                print("[DesktopRosSync] Localization complete. Robot at standstill.")
+
+        threading.Thread(target=_localize_worker, daemon=True).start()
 
     def stop(self):
         self._running = False
@@ -2035,19 +2214,26 @@ class MainWindow(QMainWindow):
         )
 
     def _trigger_auto_localize(self):
-        """Broadcasts initial pose to AMCL when Auto Nav mode is running."""
+        """Triggers AMCL auto-localization with 2D LiDAR when Auto Nav mode is running."""
         if self._current_nav_mode == "localization" and getattr(self, '_ros_sync', None):
-            self._ros_sync.pulse_initial_pose()
+            self._ros_sync.trigger_auto_localize()
 
-    def _on_robot_localized(self, x: float, y: float, yaw: float):
+    def _on_robot_localized(self, x: float, y: float, yaw: float, is_converged: bool = False):
         """Called when AMCL reports valid pose on /amcl_pose."""
-        if self._current_nav_mode == "localization" and not getattr(self, '_localized', False):
-            self._localized = True
+        if self._current_nav_mode == "localization":
             map_name = getattr(self, '_active_loaded_map', '') or getattr(self, '_selected_map_name', '') or "Building6-Floor1"
-            self.lbl_idle_status.setText(f"● NAV READY - LOCALIZED ({map_name})")
-            self.lbl_idle_status.setStyleSheet("color: #00e676;")
-            self._broadcast_mode_status()
-            print(f"[Desktop App] AMCL Localization Confirmed! Robot at x={x:.2f}, y={y:.2f}, yaw={yaw:.2f} rad")
+            if is_converged:
+                if not getattr(self, '_localized', False):
+                    self._localized = True
+                    self.lbl_idle_status.setText(f"● NAV READY - LOCALIZED ({map_name})")
+                    self.lbl_idle_status.setStyleSheet("color: #00e676;")
+                    self._broadcast_mode_status()
+                    print(f"[Desktop App] AMCL Localization Confirmed! Robot at x={x:.2f}, y={y:.2f}, yaw={yaw:.2f} rad")
+            else:
+                if not getattr(self, '_localized', False):
+                    self.lbl_idle_status.setText(f"● LOCALIZING (2D LiDAR Scanning...)")
+                    self.lbl_idle_status.setStyleSheet("color: #38bdf8;")
+                    self._broadcast_mode_status()
 
     def _on_remote_mode_cmd(self, mode: str, map_name: str):
         """Handles remote launch commands received from the web dashboard."""
@@ -2105,11 +2291,11 @@ class MainWindow(QMainWindow):
         self._broadcast_mode_status()
         QTimer.singleShot(1000, lambda: self._do_launch_ros(mode, map_name))
 
-        # Automatically localise on launching Auto Nav mode (no RViz 2D Pose Estimate needed)
+        # Automatically localise on launching Auto Nav mode (AMCL 2D LiDAR auto-localization)
         if mode == "localization":
             self._localized = False
-            for delay in [3000, 4500, 6000, 7500, 9000, 11000]:
-                QTimer.singleShot(delay, self._trigger_auto_localize)
+            QTimer.singleShot(3500, self._trigger_auto_localize)
+            QTimer.singleShot(7500, self._trigger_auto_localize)
 
     def _do_launch_ros(self, mode: str, map_name: str = ""):
         active_db = "/home/hospobot/hospobot_ws/.active_mapping.db"
