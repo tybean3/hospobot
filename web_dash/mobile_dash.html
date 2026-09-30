@@ -819,7 +819,7 @@
         function launchRobotMode(mode) {
             setModePub.publish(new ROSLIB.Message({ data: mode }));
             if (mode === 'localization') {
-                showToast('Launching Auto Nav & Auto-Localizing...', '🚀');
+                showToast('Launching Auto Nav...', '🚀');
             } else if (mode === 'mapping') {
                 showToast('Launching Mapping Stack...', '🗺️');
             } else if (mode === 'driving') {

@@ -252,6 +252,7 @@ class DesktopRosSyncThread(QThread):
         self._status_pub_latched = None
         self._mode_status_pub = None
         self._initialpose_pub = None
+        self._auto_localize_enabled = False  # Auto-localization disabled per user request
         self._is_localizing = False
         self._localized_confirmed = False
         self._last_scan = None
@@ -425,6 +426,9 @@ class DesktopRosSyncThread(QThread):
 
     def trigger_auto_localize(self):
         """Uses 2D LiDAR correlative scan matching to seed AMCL, then executes an active in-place spin for 100% convergence."""
+        if not getattr(self, '_auto_localize_enabled', False):
+            print("[DesktopRosSync] Auto-localization is disabled.")
+            return
         if not self._node:
             return
         self._localized_confirmed = False
@@ -2215,8 +2219,8 @@ class MainWindow(QMainWindow):
 
     def _trigger_auto_localize(self):
         """Triggers AMCL auto-localization with 2D LiDAR when Auto Nav mode is running."""
-        if self._current_nav_mode == "localization" and getattr(self, '_ros_sync', None):
-            self._ros_sync.trigger_auto_localize()
+        # Auto-localization disabled per user request
+        return
 
     def _on_robot_localized(self, x: float, y: float, yaw: float, is_converged: bool = False):
         """Called when AMCL reports valid pose on /amcl_pose."""
@@ -2291,11 +2295,9 @@ class MainWindow(QMainWindow):
         self._broadcast_mode_status()
         QTimer.singleShot(1000, lambda: self._do_launch_ros(mode, map_name))
 
-        # Automatically localise on launching Auto Nav mode (AMCL 2D LiDAR auto-localization)
+        # Auto-localization on launch disabled per user request
         if mode == "localization":
             self._localized = False
-            QTimer.singleShot(3500, self._trigger_auto_localize)
-            QTimer.singleShot(7500, self._trigger_auto_localize)
 
     def _do_launch_ros(self, mode: str, map_name: str = ""):
         active_db = "/home/hospobot/hospobot_ws/.active_mapping.db"
