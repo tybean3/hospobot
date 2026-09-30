@@ -513,6 +513,24 @@ def generate_launch_description():
         }]
     )
 
+    # 21. Semantic Costmap Publisher (Dense Context-Aware Costmap Prediction)
+    semantic_costmap_publisher_node = Node(
+        package='hospobot_semantic',
+        executable='semantic_costmap_publisher.py',
+        name='semantic_costmap_publisher',
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'localization'"]))
+    )
+
+    # 22. VLM Semantic Intervention Server (Vision-Language Action Bias Server)
+    vlm_intervention_server_node = Node(
+        package='hospobot_semantic',
+        executable='vlm_intervention_server.py',
+        name='vlm_intervention_server',
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'localization'"]))
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='false', description='Use simulation (Gazebo) clock if true'),
         DeclareLaunchArgument('nav_mode', default_value='mapping', description='Navigation mode: mapping or localization'),
@@ -551,5 +569,7 @@ def generate_launch_description():
         teleop_twist_joy_node,
         footprint_publisher_node,
         robot_fov_indicator_node,
-        nav_visualizer_node
+        nav_visualizer_node,
+        semantic_costmap_publisher_node,
+        vlm_intervention_server_node
     ])

@@ -46,7 +46,7 @@ class SemanticCostmapPublisher(Node):
         costmap_data = np.zeros((100, 100), dtype=np.int8)
         
         # Simulate some obstacles (e.g., in front of the robot)
-        costmap_data[70:80, 40:60] = 100
+        # costmap_data[70:80, 40:60] = 100
         
         msg.data = costmap_data.flatten().tolist()
         

@@ -115,8 +115,18 @@ void DenseSemanticLayer::updateCosts(
 
         // Combine costs (taking the maximum)
         if (semantic_cost > 0) {
+          int mapped_cost = 0;
+          if (semantic_cost >= 100) {
+            mapped_cost = nav2_costmap_2d::LETHAL_OBSTACLE;
+          } else if (semantic_cost == -1) {
+            mapped_cost = nav2_costmap_2d::NO_INFORMATION;
+          } else {
+            // scale 1-99 to 1-252
+            mapped_cost = static_cast<int>((semantic_cost / 99.0) * 252.0);
+          }
+
           int current_cost = master_grid.getCost(i, j);
-          int new_cost = std::max(current_cost, semantic_cost);
+          int new_cost = std::max(current_cost, mapped_cost);
           master_grid.setCost(i, j, new_cost);
         }
       }
