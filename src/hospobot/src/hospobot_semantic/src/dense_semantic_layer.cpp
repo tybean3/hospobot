@@ -32,7 +32,7 @@ void DenseSemanticLayer::onInitialize()
   node->get_parameter(name_ + "." + "timeout_sec", timeout_sec_);
 
   grid_sub_ = node->create_subscription<nav_msgs::msg::OccupancyGrid>(
-    topic_name_, 10,
+    topic_name_, rclcpp::QoS(10).transient_local().reliable(),
     std::bind(&DenseSemanticLayer::gridCallback, this, std::placeholders::_1));
 
   current_ = true;

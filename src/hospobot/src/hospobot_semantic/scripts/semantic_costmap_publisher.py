@@ -2,6 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 from nav_msgs.msg import OccupancyGrid
 from std_msgs.msg import Header
 import numpy as np
@@ -10,10 +11,16 @@ import time
 class SemanticCostmapPublisher(Node):
     def __init__(self):
         super().__init__('semantic_costmap_publisher')
-        self.publisher_ = self.create_publisher(OccupancyGrid, '/semantic_network/dense_costmap', 10)
-        timer_period = 0.5  # seconds
+        qos = QoSProfile(
+            depth=10,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            reliability=ReliabilityPolicy.RELIABLE
+        )
+        self.publisher_ = self.create_publisher(OccupancyGrid, '/semantic_network/dense_costmap', qos)
+        timer_period = 0.5  # seconds (2 Hz)
         self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.get_logger().info('Semantic Costmap Publisher Node started.')
+        self.pub_count = 0
+        self.get_logger().info('Semantic Costmap Publisher Node started (Transient Local QoS).')
 
     def timer_callback(self):
         msg = OccupancyGrid()
@@ -21,7 +28,7 @@ class SemanticCostmapPublisher(Node):
         # Populate the header
         msg.header = Header()
         msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = 'base_link'
+        msg.header.frame_id = 'base_footprint'
         
         # Populate the grid info
         msg.info.resolution = 0.05  # 5 cm per cell
