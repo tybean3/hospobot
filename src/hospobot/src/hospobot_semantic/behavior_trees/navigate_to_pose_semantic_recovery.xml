@@ -3,7 +3,7 @@
   recovery actions specific to the robot such as spin and backup, but prioritizes
   a Semantic Intervention based on VLM reasoning before resorting to blind recoveries.
 -->
-<root main_tree_to_execute="MainTree">
+<root BTCPP_format="4" main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
     <RecoveryNode number_of_retries="6" name="NavigateRecovery">
       <PipelineSequence name="NavigateWithReplanning">
@@ -28,9 +28,10 @@
             <!-- Event Trigger: Checks if robot is stuck/oscillating -->
             <DeadlockDetector oscillation_timeout="5.0" min_progress_distance="0.5"/>
             <!-- Action Trigger: Queries VLM and guides robot out -->
-            <VLMSemanticIntervention camera_topic="/oakd/rgb/image_raw" short_term_bias="{bias_goal}"/>
+            <VLMSemanticIntervention camera_topic="/oak/rgb/image_raw" short_term_bias="{bias_goal}"/>
             <!-- If VLM returned a short term goal, follow it -->
-            <NavigateToPose goal="{bias_goal}"/>
+            <ComputePathToPose goal="{bias_goal}" path="{bias_path}" planner_id="GridBased"/>
+            <FollowPath path="{bias_path}" controller_id="FollowPath"/>
           </Sequence>
 
           <!-- Standard Blind Recoveries -->

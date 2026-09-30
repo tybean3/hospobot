@@ -46,6 +46,7 @@ add_library(deadlock_detector_condition SHARED src/deadlock_detector_condition.c
 target_include_directories(deadlock_detector_condition PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
+target_compile_definitions(deadlock_detector_condition PRIVATE BT_PLUGIN_EXPORT)
 ament_target_dependencies(deadlock_detector_condition
   rclcpp behaviortree_cpp geometry_msgs)
 
@@ -53,6 +54,7 @@ add_library(vlm_semantic_intervention_action SHARED src/vlm_semantic_interventio
 target_include_directories(vlm_semantic_intervention_action PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
+target_compile_definitions(vlm_semantic_intervention_action PRIVATE BT_PLUGIN_EXPORT)
 ament_target_dependencies(vlm_semantic_intervention_action
   rclcpp behaviortree_cpp sensor_msgs geometry_msgs hospobot_interfaces)
 
