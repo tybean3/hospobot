@@ -9,9 +9,7 @@
 #include "sensor_msgs/msg/image.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
-// Placeholder for custom service interface
-// #include "hospobot_interfaces/srv/vlm_intervention.hpp"
-// Since the interface might not exist, we'll use a generic approach for demonstration.
+#include "hospobot_interfaces/srv/vlm_intervention.hpp"
 
 namespace hospobot_semantic
 {
@@ -43,6 +41,8 @@ private:
   rclcpp::Node::SharedPtr node_;
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr bias_pub_;
+  rclcpp::Client<hospobot_interfaces::srv::VLMIntervention>::SharedPtr vlm_client_;
+  std::shared_future<std::shared_ptr<hospobot_interfaces::srv::VLMIntervention_Response>> future_result_;
   
   sensor_msgs::msg::Image::SharedPtr latest_image_;
   std::mutex image_mutex_;

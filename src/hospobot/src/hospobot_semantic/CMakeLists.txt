@@ -19,6 +19,7 @@ find_package(tf2_ros REQUIRED)
 find_package(nav2_behavior_tree REQUIRED)
 find_package(nav2_msgs REQUIRED)
 find_package(behaviortree_cpp REQUIRED)
+find_package(hospobot_interfaces REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -53,7 +54,7 @@ target_include_directories(vlm_semantic_intervention_action PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(vlm_semantic_intervention_action
-  rclcpp behaviortree_cpp sensor_msgs geometry_msgs)
+  rclcpp behaviortree_cpp sensor_msgs geometry_msgs hospobot_interfaces)
 
 install(TARGETS
   dense_semantic_layer
@@ -68,6 +69,12 @@ install(DIRECTORY include/ behavior_trees/
 
 install(DIRECTORY behavior_trees/
   DESTINATION share/${PROJECT_NAME}/behavior_trees)
+
+install(PROGRAMS
+  scripts/semantic_costmap_publisher.py
+  scripts/vlm_intervention_server.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 pluginlib_export_plugin_description_file(nav2_costmap_2d plugins.xml)
 

@@ -23,6 +23,9 @@ VLMSemanticInterventionAction::VLMSemanticInterventionAction(
 
   // Publisher to send the short-term bias to the local planner
   bias_pub_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>("/semantic_bias_goal", 10);
+
+  // VLM Service Client
+  vlm_client_ = node_->create_client<hospobot_interfaces::srv::VLMIntervention>("/vlm_intervention");
 }
 
 VLMSemanticInterventionAction::~VLMSemanticInterventionAction()
@@ -61,12 +64,16 @@ BT::NodeStatus VLMSemanticInterventionAction::onRunning()
   if (!request_sent_) {
     std::lock_guard<std::mutex> lock(image_mutex_);
     if (latest_image_) {
+      if (!vlm_client_->wait_for_service(std::chrono::seconds(1))) {
+        RCLCPP_WARN(node_->get_logger(), "Waiting for VLM service...");
+        return BT::NodeStatus::RUNNING;
+      }
+
       RCLCPP_INFO(node_->get_logger(), "Sending RGB frame to external VLM script...");
-      // TODO: Make actual service call to VLM here using latest_image_
-      // Example:
-      // auto request = std::make_shared<hospobot_interfaces::srv::VLMIntervention::Request>();
-      // request->image = *latest_image_;
-      // vlm_client_->async_send_request(request, [this](...) { ... process response ... });
+      auto request = std::make_shared<hospobot_interfaces::srv::VLMIntervention::Request>();
+      request->image = *latest_image_;
+      
+      future_result_ = vlm_client_->async_send_request(request).share();
 
       request_sent_ = true;
       latest_image_.reset(); // Clear after sending
@@ -77,23 +84,25 @@ BT::NodeStatus VLMSemanticInterventionAction::onRunning()
       }
     }
   } else {
-    // Simulated VLM Response Handling (replace with actual service callback logic)
-    // Assume we received a response after 2 seconds
-    if ((now - start_time_).seconds() > 2.0) {
-      RCLCPP_INFO(node_->get_logger(), "Received Immediate Action Bias from VLM. Publishing to local planner...");
-      
-      geometry_msgs::msg::PoseStamped bias_goal;
-      bias_goal.header.stamp = node_->now();
-      bias_goal.header.frame_id = "base_link"; // Bias is typically relative to the robot
-      bias_goal.pose.position.x = 1.0; // Example: Move 1 meter forward
-      bias_goal.pose.position.y = 0.0;
-      bias_goal.pose.orientation.w = 1.0;
-
-      bias_pub_->publish(bias_goal);
-      setOutput("short_term_bias", bias_goal);
-      
-      intervention_complete_ = true;
-      RCLCPP_INFO(node_->get_logger(), "Semantic Intervention Complete. Robot should be out of deadlock.");
+    // Check if the service call is done
+    if (future_result_.valid() && future_result_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+      auto response = future_result_.get();
+      if (response->success) {
+        RCLCPP_INFO(node_->get_logger(), "Received Immediate Action Bias from VLM. Publishing to local planner...");
+        
+        geometry_msgs::msg::PoseStamped bias_goal = response->bias_goal;
+        bias_goal.header.stamp = node_->now();
+        
+        bias_pub_->publish(bias_goal);
+        setOutput("short_term_bias", bias_goal);
+        
+        intervention_complete_ = true;
+        RCLCPP_INFO(node_->get_logger(), "Semantic Intervention Complete. Robot should be out of deadlock.");
+        return BT::NodeStatus::SUCCESS;
+      } else {
+        RCLCPP_ERROR(node_->get_logger(), "VLM Service failed: %s", response->message.c_str());
+        return BT::NodeStatus::FAILURE;
+      }
     }
   }
 

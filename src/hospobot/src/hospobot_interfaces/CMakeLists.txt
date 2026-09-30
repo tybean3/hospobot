@@ -9,12 +9,14 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/SemanticObject.msg"
   "msg/SemanticObjectArray.msg"
-  DEPENDENCIES geometry_msgs std_msgs
+  "srv/VLMIntervention.srv"
+  DEPENDENCIES geometry_msgs std_msgs sensor_msgs
 )
 
 if(BUILD_TESTING)
