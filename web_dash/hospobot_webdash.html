@@ -1989,6 +1989,7 @@
                 <button class="mode-btn-desktop" id="dt-mode-loc" onclick="setRobotMode('localization')">🚀 Auto Nav</button>
                 <button class="mode-btn-desktop" id="dt-mode-map" onclick="setRobotMode('mapping')">🗺️ Mapping</button>
                 <button class="mode-btn-desktop" id="dt-mode-drive" onclick="setRobotMode('driving')">🎮 Driving</button>
+                <button class="mode-btn-desktop" id="dt-mode-exp" onclick="setRobotMode('experiment_clutter_recovery')">🧪 Experiments</button>
                 <button class="mode-btn-desktop" id="dt-mode-stop" onclick="setRobotMode('idle')">🛑 Stop</button>
             </div>
 
@@ -3809,10 +3810,11 @@
             const btnLoc = document.getElementById('dt-mode-loc');
             const btnMap = document.getElementById('dt-mode-map');
             const btnDrive = document.getElementById('dt-mode-drive');
+            const btnExp = document.getElementById('dt-mode-exp');
             const btnStop = document.getElementById('dt-mode-stop');
             const statusNavState = document.getElementById('status-nav-state');
 
-            [btnLoc, btnMap, btnDrive].forEach(b => {
+            [btnLoc, btnMap, btnDrive, btnExp].forEach(b => {
                 if (b) {
                     b.style.background = 'transparent';
                     b.style.borderColor = '#334155';
@@ -3853,6 +3855,17 @@
                 if (statusNavState) {
                     statusNavState.innerText = stateText || 'DRIVING READY';
                     statusNavState.style.color = '#f59e0b';
+                }
+            } else if (activeRobotMode === 'experiment' || activeRobotMode === 'experiment_clutter_recovery') {
+                if (btnExp) {
+                    btnExp.style.background = 'rgba(187, 134, 252, 0.25)';
+                    btnExp.style.borderColor = '#bb86fc';
+                    btnExp.style.color = '#bb86fc';
+                    btnExp.style.boxShadow = '0 0 12px rgba(187, 134, 252, 0.4)';
+                }
+                if (statusNavState) {
+                    statusNavState.innerText = stateText || 'EXPERIMENT: CLUTTER & RECOVERY';
+                    statusNavState.style.color = '#bb86fc';
                 }
             } else {
                 if (statusNavState) {
@@ -4698,7 +4711,36 @@
         setTimeout(() => {
             makeDraggable(document.getElementById('slam-map'));
         }, 1000);
+
+        // HMI Passing Intention Subscriber
+        var intentionSub = new ROSLIB.Topic({
+            ros: ros,
+            name: '/hmi/passing_intention',
+            messageType: 'std_msgs/String'
+        });
+
+        intentionSub.subscribe(function (message) {
+            const overlay = document.getElementById('passing-intention-overlay');
+            const arrow = document.getElementById('passing-arrow');
+            
+            if (message.data === 'PASS_RIGHT') {
+                overlay.style.display = 'block';
+                arrow.innerHTML = 'Pass on RIGHT ➡️';
+                arrow.style.color = '#10b981';
+            } else if (message.data === 'PASS_LEFT') {
+                overlay.style.display = 'block';
+                arrow.innerHTML = 'Pass on LEFT ⬅️';
+                arrow.style.color = '#10b981';
+            } else {
+                overlay.style.display = 'none';
+            }
+        });
     </script>
+    
+    <!-- Add Passing Intention Overlay -->
+    <div id="passing-intention-overlay" style="display: none; position: absolute; top: 10%; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(30, 41, 59, 0.92); border: 2px solid #38bdf8; border-radius: 20px; padding: 20px 40px; text-align: center; box-shadow: 0 0 30px rgba(56, 189, 248, 0.5);">
+        <div id="passing-arrow" style="font-size: 64px; color: #10b981; font-weight: bold; white-space: nowrap;">Pass on RIGHT ➡️</div>
+    </div>
 </body>
 
 </html>

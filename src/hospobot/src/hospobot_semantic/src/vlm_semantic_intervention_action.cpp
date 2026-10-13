@@ -18,7 +18,12 @@ VLMSemanticInterventionAction::VLMSemanticInterventionAction(
   }
 
   image_sub_ = node_->create_subscription<sensor_msgs::msg::Image>(
-    camera_topic, 1,
+    camera_topic, rclcpp::SensorDataQoS(),
+    std::bind(&VLMSemanticInterventionAction::imageCallback, this, std::placeholders::_1));
+
+  std::string alt_topic = (camera_topic == "/oakd_camera/image") ? "/oak/rgb/image_raw" : "/oakd_camera/image";
+  image_sub_alt_ = node_->create_subscription<sensor_msgs::msg::Image>(
+    alt_topic, rclcpp::SensorDataQoS(),
     std::bind(&VLMSemanticInterventionAction::imageCallback, this, std::placeholders::_1));
 
   // Publisher to send the short-term bias to the local planner

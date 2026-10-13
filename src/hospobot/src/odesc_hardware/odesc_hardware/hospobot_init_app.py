@@ -38,7 +38,7 @@ try:
     import rclpy
     from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy, qos_profile_sensor_data
     from std_msgs.msg import String
-    from geometry_msgs.msg import Twist, PoseWithCovarianceStamped
+    from geometry_msgs.msg import Twist, PoseWithCovarianceStamped, PoseStamped
     from sensor_msgs.msg import LaserScan
     from std_srvs.srv import Empty as EmptySrv
     import threading
@@ -242,6 +242,7 @@ class PowerPollThread(QThread):
 class DesktopRosSyncThread(QThread):
     mode_command_received = pyqtSignal(str, str)  # (mode, map_name)
     localized_signal = pyqtSignal(float, float, float, bool)  # (x, y, yaw, is_converged)
+    passing_intention_signal = pyqtSignal(str)
 
     def __init__(self, main_win=None):
         super().__init__()
@@ -252,6 +253,7 @@ class DesktopRosSyncThread(QThread):
         self._status_pub_latched = None
         self._mode_status_pub = None
         self._initialpose_pub = None
+        self._goal_pose_pub = None
         self._auto_localize_enabled = False  # Auto-localization disabled per user request
         self._is_localizing = False
         self._localized_confirmed = False
@@ -286,6 +288,7 @@ class DesktopRosSyncThread(QThread):
             self._status_pub_latched = self._node.create_publisher(String, '/hospobot/current_mode_latched', qos_latched)
             self._mode_status_pub = self._node.create_publisher(String, '/hospobot/mode_status', qos_latched)
             self._initialpose_pub = self._node.create_publisher(PoseWithCovarianceStamped, '/initialpose', 10)
+            self._goal_pose_pub = self._node.create_publisher(PoseStamped, '/goal_pose', 10)
             self._cmd_vel_pub = self._node.create_publisher(Twist, '/cmd_vel_web', 10)
 
             def _on_scan(msg):
@@ -381,6 +384,11 @@ class DesktopRosSyncThread(QThread):
                     pass
 
             self._node.create_subscription(PoseWithCovarianceStamped, '/amcl_pose', _on_amcl_pose, 10)
+
+            def _on_passing_intention(msg):
+                self.passing_intention_signal.emit(msg.data)
+            
+            self._node.create_subscription(String, '/hmi/passing_intention', _on_passing_intention, 10)
 
             while self._running and rclpy.ok():
                 rclpy.spin_once(self._node, timeout_sec=0.1)
@@ -546,6 +554,69 @@ class DesktopRosSyncThread(QThread):
                 print("[DesktopRosSync] Localization complete. Robot at standstill.")
 
         threading.Thread(target=_localize_worker, daemon=True).start()
+
+    def publish_initial_pose(self, x: float, y: float, yaw: float, cov_x=0.08, cov_y=0.08, cov_yaw=0.04):
+        """Publishes an initial pose estimate to /initialpose for AMCL."""
+        if not self._node or not self._initialpose_pub:
+            return False
+        try:
+            init_msg = PoseWithCovarianceStamped()
+            init_msg.header.stamp = self._node.get_clock().now().to_msg()
+            init_msg.header.frame_id = 'map'
+            init_msg.pose.pose.position.x = float(x)
+            init_msg.pose.pose.position.y = float(y)
+            init_msg.pose.pose.position.z = 0.0
+
+            half_yaw = float(yaw) * 0.5
+            init_msg.pose.pose.orientation.z = math.sin(half_yaw)
+            init_msg.pose.pose.orientation.w = math.cos(half_yaw)
+
+            cov = [0.0] * 36
+            cov[0] = float(cov_x)
+            cov[7] = float(cov_y)
+            cov[35] = float(cov_yaw)
+            init_msg.pose.covariance = cov
+
+            self._initialpose_pub.publish(init_msg)
+            print(f"[DesktopRosSync] Published initial pose: ({x:.3f}, {y:.3f}, yaw={yaw:.3f} rad)")
+
+            # Call nomotion update if service available
+            try:
+                nomotion_client = self._node.create_client(EmptySrv, '/request_nomotion_update')
+                if nomotion_client.wait_for_service(timeout_sec=0.2):
+                    for _ in range(2):
+                        req = EmptySrv.Request()
+                        nomotion_client.call_async(req)
+                        time.sleep(0.05)
+            except Exception:
+                pass
+            return True
+        except Exception as e:
+            print(f"[DesktopRosSync] Error publishing initial pose: {e}")
+            return False
+
+    def publish_goal_pose(self, x: float, y: float, yaw: float = 0.0):
+        """Publishes a goal pose to /goal_pose for Nav2 bt_navigator."""
+        if not self._node or not self._goal_pose_pub:
+            return False
+        try:
+            goal_msg = PoseStamped()
+            goal_msg.header.stamp = self._node.get_clock().now().to_msg()
+            goal_msg.header.frame_id = 'map'
+            goal_msg.pose.position.x = float(x)
+            goal_msg.pose.position.y = float(y)
+            goal_msg.pose.position.z = 0.0
+
+            half_yaw = float(yaw) * 0.5
+            goal_msg.pose.orientation.z = math.sin(half_yaw)
+            goal_msg.pose.orientation.w = math.cos(half_yaw)
+
+            self._goal_pose_pub.publish(goal_msg)
+            print(f"[DesktopRosSync] Published goal pose: ({x:.3f}, {y:.3f}, yaw={yaw:.3f} rad)")
+            return True
+        except Exception as e:
+            print(f"[DesktopRosSync] Error publishing goal pose: {e}")
+            return False
 
     def stop(self):
         self._running = False
@@ -1254,9 +1325,12 @@ class MainWindow(QMainWindow):
         self.page_calib_choice  = QWidget(); self.setup_calib_choice_page(); self.stack.addWidget(self.page_calib_choice)
         self.page_drive_calib   = QWidget(); self.setup_drive_calib_page();  self.stack.addWidget(self.page_drive_calib)
         self.page_launch        = QWidget(); self.setup_launch_page();       self.stack.addWidget(self.page_launch)
+        self.page_experiments   = QWidget(); self.setup_experiments_page();  self.stack.addWidget(self.page_experiments)
         self.page_map_select    = QWidget(); self.setup_map_select_page();   self.stack.addWidget(self.page_map_select)
         self.page_mapping_prep  = QWidget(); self.setup_mapping_prep_page(); self.stack.addWidget(self.page_mapping_prep)
         self.page_idle          = QWidget(); self.setup_idle_page();         self.stack.addWidget(self.page_idle)
+
+        self._experiment_timers = []
 
         # Power polling (direct serial + ROS fallback)
         self._power_thread = PowerPollThread(self)
@@ -1278,6 +1352,7 @@ class MainWindow(QMainWindow):
                 self._ros_sync = DesktopRosSyncThread(self)
                 self._ros_sync.mode_command_received.connect(self._on_remote_mode_cmd)
                 self._ros_sync.localized_signal.connect(self._on_robot_localized)
+                self._ros_sync.passing_intention_signal.connect(self._on_passing_intention)
                 self._ros_sync.start()
             except Exception as e:
                 print(f"Warning initializing DesktopRosSyncThread: {e}")
@@ -1636,15 +1711,15 @@ class MainWindow(QMainWindow):
         layout.addWidget(subtitle)
 
         btn_row = QHBoxLayout()
-        btn_row.setSpacing(40)
+        btn_row.setSpacing(25)
         btn_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         def _btn(label, color, hover, press):
             b = QPushButton(label)
-            b.setFixedSize(280, 120)
+            b.setFixedSize(220, 110)
             b.setStyleSheet(
-                f"QPushButton {{ background-color: {color}; color: #000; border-radius: 20px; "
-                f"font-size: 22px; font-weight: bold; padding: 20px; }}"
+                f"QPushButton {{ background-color: {color}; color: #000; border-radius: 18px; "
+                f"font-size: 20px; font-weight: bold; padding: 16px; }}"
                 f"QPushButton:hover {{ background-color: {hover}; }}"
                 f"QPushButton:pressed {{ background-color: {press}; }}"
             )
@@ -1654,7 +1729,7 @@ class MainWindow(QMainWindow):
         btn_mapping.clicked.connect(lambda: self.open_map_selection("mapping"))
         btn_row.addWidget(btn_mapping)
 
-        btn_loc = _btn("Autonomous Nav",     "#80EF80", "#cf9fff", "#7c59b5")
+        btn_loc = _btn("Autonomous Nav",     "#80EF80", "#a1f2a1", "#58c758")
         btn_loc.clicked.connect(lambda: self.open_map_selection("localization"))
         btn_row.addWidget(btn_loc)
 
@@ -1662,8 +1737,79 @@ class MainWindow(QMainWindow):
         btn_drive.clicked.connect(lambda: self.launch_ros("driving"))
         btn_row.addWidget(btn_drive)
 
+        btn_exp = _btn("Experiments",        "#bb86fc", "#d1a3ff", "#9955e8")
+        btn_exp.clicked.connect(self.open_experiments_page)
+        btn_row.addWidget(btn_exp)
+
         layout.addLayout(btn_row)
         self.page_launch.setLayout(layout)
+
+    # ── Experiments Page ───────────────────────────────────────────────────────
+    def open_experiments_page(self):
+        self.stack.setCurrentWidget(self.page_experiments)
+
+    def setup_experiments_page(self):
+        layout = QVBoxLayout()
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.setSpacing(30)
+        layout.setContentsMargins(40, 20, 40, 20)
+
+        title = QLabel("ROBOT EXPERIMENTS")
+        title.setFont(QFont("Inter", 32, QFont.Weight.Bold))
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet("color: #bb86fc;")
+        layout.addWidget(title)
+
+        subtitle = QLabel("Select an automated experimental test suite")
+        subtitle.setFont(QFont("Inter", 18))
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle.setStyleSheet("color: #aaaaaa;")
+        layout.addWidget(subtitle)
+
+        exp_list_layout = QVBoxLayout()
+        exp_list_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        exp_list_layout.setSpacing(20)
+
+        # Experiment 1: Clutter & Recovery
+        btn_clutter = QPushButton()
+        btn_clutter.setFixedSize(640, 120)
+        btn_clutter.setStyleSheet(
+            "QPushButton { background: #1a1a2e; border: 2px solid #bb86fc; border-radius: 16px; text-align: left; padding: 20px; }"
+            "QPushButton:hover { background: #252345; border-color: #d1a3ff; }"
+            "QPushButton:pressed { background: #151426; border-color: #9955e8; }"
+        )
+        clutter_box = QVBoxLayout(btn_clutter)
+        clutter_box.setContentsMargins(20, 12, 20, 12)
+        clutter_box.setSpacing(6)
+
+        lbl_c_title = QLabel("🧪  Clutter & Recovery")
+        lbl_c_title.setFont(QFont("Inter", 22, QFont.Weight.Bold))
+        lbl_c_title.setStyleSheet("color: #bb86fc; background: transparent; border: none;")
+        clutter_box.addWidget(lbl_c_title)
+
+        lbl_c_desc = QLabel("Primary Map: Building6-Floor1  |  Saved Pose  |  Goal: (39, -38)")
+        lbl_c_desc.setFont(QFont("Inter", 14))
+        lbl_c_desc.setStyleSheet("color: #03dac6; background: transparent; border: none;")
+        clutter_box.addWidget(lbl_c_desc)
+
+        btn_clutter.clicked.connect(self.run_clutter_recovery_experiment)
+        exp_list_layout.addWidget(btn_clutter, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        layout.addLayout(exp_list_layout)
+
+        # Back button
+        btn_back = QPushButton("⬅  BACK")
+        btn_back.setFont(QFont("Inter", 18, QFont.Weight.Bold))
+        btn_back.setFixedSize(220, 60)
+        btn_back.setStyleSheet(
+            "QPushButton { background-color: #333333; color: white; border-radius: 12px; }"
+            "QPushButton:hover { background-color: #444444; }"
+            "QPushButton:pressed { background-color: #222222; }"
+        )
+        btn_back.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_launch))
+        layout.addWidget(btn_back, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self.page_experiments.setLayout(layout)
 
     # ── Map Selection Page ─────────────────────────────────────────────────────
     def setup_map_select_page(self):
@@ -2017,6 +2163,13 @@ class MainWindow(QMainWindow):
         self.btn_finish_mapping.hide()
         layout.addWidget(self.btn_finish_mapping, alignment=Qt.AlignmentFlag.AlignCenter)
 
+        self.lbl_passing_intention = QLabel("")
+        self.lbl_passing_intention.setFont(QFont("Inter", 48, QFont.Weight.Bold))
+        self.lbl_passing_intention.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_passing_intention.setStyleSheet("color: #10b981; background: rgba(30, 41, 59, 0.9); border: 2px solid #38bdf8; border-radius: 20px; padding: 20px;")
+        self.lbl_passing_intention.hide()
+        layout.addWidget(self.lbl_passing_intention, alignment=Qt.AlignmentFlag.AlignCenter)
+
         btn_exit = QPushButton("⬅  EXIT / CHANGE MODE")
         btn_exit.setFont(QFont("Inter", 18, QFont.Weight.Bold))
         btn_exit.setFixedSize(340, 70)
@@ -2268,6 +2421,10 @@ class MainWindow(QMainWindow):
             self._terminate_launch_proc()
             QTimer.singleShot(1500, lambda: self.launch_ros("driving"))
 
+        elif mode in ["experiment", "experiment_clutter_recovery", "clutter_recovery"]:
+            self._terminate_launch_proc()
+            QTimer.singleShot(1500, self.run_clutter_recovery_experiment)
+
         elif mode in ["idle", "stop", "exit"]:
             self._exit_launch_mode()
 
@@ -2331,8 +2488,102 @@ class MainWindow(QMainWindow):
             preexec_fn=os.setsid
         )
 
+    def _clear_experiment_timers(self):
+        if hasattr(self, '_experiment_timers'):
+            for t in self._experiment_timers:
+                try:
+                    t.stop()
+                except Exception:
+                    pass
+            self._experiment_timers.clear()
+
+    def run_clutter_recovery_experiment(self):
+        """Runs the Clutter & Recovery experiment:
+        1. Launches AutoNav with primary map 'Building6-Floor1'.
+        2. Sets initial pose estimate to the saved pose.
+        3. Publishes goal pose to (39.0, -38.0).
+        """
+        self._clear_experiment_timers()
+
+        saved_pose_path = "/home/hospobot/hospobot_ws/src/hospobot/src/hospobot_bringup/config/saved_experiment_pose.json"
+        init_x = 33.226
+        init_y = -30.233
+        init_yaw = -0.641
+        goal_x = 39.0
+        goal_y = -38.0
+        goal_yaw = -0.641
+        primary_map = "Building6-Floor1"
+
+        if os.path.exists(saved_pose_path):
+            try:
+                with open(saved_pose_path, "r") as f:
+                    data = json.load(f)
+                    primary_map = data.get("map", primary_map)
+                    ip = data.get("initial_pose", {})
+                    init_x = float(ip.get("x", init_x))
+                    init_y = float(ip.get("y", init_y))
+                    init_yaw = float(ip.get("yaw_rad", init_yaw))
+                    gp = data.get("experiment_clutter_and_recovery", {}).get("goal_pose", {})
+                    goal_x = float(gp.get("x", goal_x))
+                    goal_y = float(gp.get("y", goal_y))
+                    goal_yaw = float(gp.get("yaw_rad", goal_yaw))
+            except Exception as e:
+                print(f"[Experiment] Error reading config: {e}")
+
+        # Launch AutoNav stack with primary map
+        self.launch_ros("localization", primary_map)
+        self.lbl_idle_status.setText("● EXPERIMENT: Clutter & Recovery (Initializing Nav2...)")
+        self.lbl_idle_status.setStyleSheet("color: #bb86fc;")
+
+        def _send_initial_pose():
+            if self._ros_sync:
+                self._ros_sync.publish_initial_pose(init_x, init_y, init_yaw)
+            self.lbl_idle_status.setText(f"● EXPERIMENT: Pose Set ({init_x:.1f}, {init_y:.1f}) -> Preparing Goal...")
+
+        def _send_goal_pose():
+            if self._ros_sync:
+                self._ros_sync.publish_goal_pose(goal_x, goal_y, goal_yaw)
+            self.lbl_idle_status.setText(f"● EXPERIMENT RUNNING: Goal ({goal_x:.0f}, {goal_y:.0f})")
+
+        # Stagger timers to accommodate Nav2 and AMCL lifecycle startup
+        t1 = QTimer(self)
+        t1.setSingleShot(True)
+        t1.timeout.connect(_send_initial_pose)
+        t1.start(3500)
+        self._experiment_timers.append(t1)
+
+        t1_retry = QTimer(self)
+        t1_retry.setSingleShot(True)
+        t1_retry.timeout.connect(_send_initial_pose)
+        t1_retry.start(5000)
+        self._experiment_timers.append(t1_retry)
+
+        # Status countdown timers to display settling progress
+        for sec in range(5, 0, -1):
+            t_cnt = QTimer(self)
+            t_cnt.setSingleShot(True)
+            t_cnt.timeout.connect(lambda s=sec: self.lbl_idle_status.setText(
+                f"● EXPERIMENT: Map & Pose Initializing... (Goal in {s}s)"
+            ))
+            t_cnt.start(10000 - sec * 1000)
+            self._experiment_timers.append(t_cnt)
+
+        # Publish goal pose after a 10 second delay to allow map & initial pose to start up properly
+        t2 = QTimer(self)
+        t2.setSingleShot(True)
+        t2.timeout.connect(_send_goal_pose)
+        t2.start(10000)
+        self._experiment_timers.append(t2)
+
+        t2_retry = QTimer(self)
+        t2_retry.setSingleShot(True)
+        t2_retry.timeout.connect(_send_goal_pose)
+        t2_retry.start(12500)
+        self._experiment_timers.append(t2_retry)
+
     def _exit_launch_mode(self):
         """Kill launch stack non-blocking, then return to mode selection."""
+        self._clear_experiment_timers()
         self.btn_finish_mapping.hide()
         self._active_loaded_map = ""
         self._current_nav_mode = "idle"
@@ -2412,6 +2663,17 @@ class MainWindow(QMainWindow):
                 "border-radius: 12px; font-size: 20px; font-weight: bold; }"
                 "QPushButton:hover { background-color: #2a2a2a; }"
             )
+
+    def _on_passing_intention(self, intention):
+        if hasattr(self, 'lbl_passing_intention'):
+            if intention == 'PASS_RIGHT':
+                self.lbl_passing_intention.setText("Pass on RIGHT ➡️")
+                self.lbl_passing_intention.show()
+            elif intention == 'PASS_LEFT':
+                self.lbl_passing_intention.setText("Pass on LEFT ⬅️")
+                self.lbl_passing_intention.show()
+            else:
+                self.lbl_passing_intention.hide()
 
     # ── Power monitor process ──────────────────────────────────────────────────
     def _start_power_monitor(self):

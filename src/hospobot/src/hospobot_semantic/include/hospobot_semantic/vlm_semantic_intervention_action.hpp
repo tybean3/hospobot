@@ -40,6 +40,7 @@ private:
 
   rclcpp::Node::SharedPtr node_;
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_alt_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr bias_pub_;
   rclcpp::Client<hospobot_interfaces::srv::VLMIntervention>::SharedPtr vlm_client_;
   std::shared_future<std::shared_ptr<hospobot_interfaces::srv::VLMIntervention_Response>> future_result_;

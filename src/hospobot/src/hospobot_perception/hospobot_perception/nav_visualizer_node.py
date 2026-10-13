@@ -19,6 +19,7 @@ everything regardless of whether Fixed Frame is 'map' or 'base_footprint'.
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, Point, Twist
+from std_msgs.msg import String
 from nav_msgs.msg import Path, Odometry
 from sensor_msgs.msg import LaserScan
 from visualization_msgs.msg import Marker, MarkerArray
@@ -71,6 +72,7 @@ class NavVisualizerNode(Node):
         self.cmd_vx = 0.0
         self.cmd_wz = 0.0
         self.last_cmd_time = 0.0
+        self.nav2_decision_text = ""
 
         self.min_obstacle_dist = 99.0
         self.min_obstacle_pt_base = None  # (x, y, z) in base_footprint
@@ -112,6 +114,18 @@ class NavVisualizerNode(Node):
             self.local_plan_cb,
             10
         )
+        self.sub_cmd_vel = self.create_subscription(
+            Twist,
+            '/cmd_vel',
+            self.cmd_vel_cb,
+            10
+        )
+        self.sub_cmd_vel_smoothed = self.create_subscription(
+            Twist,
+            '/cmd_vel_smoothed',
+            self.cmd_vel_cb,
+            10
+        )
         self.sub_cmd_vel_nav = self.create_subscription(
             Twist,
             '/cmd_vel_nav',
@@ -122,6 +136,19 @@ class NavVisualizerNode(Node):
             Twist,
             '/cmd_vel_out',
             self.cmd_vel_cb,
+            10
+        )
+        self.sub_nav2_decision = self.create_subscription(
+            String,
+            '/nav2/decision_summary',
+            self.nav2_decision_cb,
+            10
+        )
+        self.mppi_scene_state = ""
+        self.sub_mppi_state = self.create_subscription(
+            String,
+            '/mppi/scene_tuning_state',
+            self.mppi_state_cb,
             10
         )
         self.sub_scan = self.create_subscription(
@@ -147,6 +174,10 @@ class NavVisualizerNode(Node):
         # Publisher for navigation markers
         self.marker_pub = self.create_publisher(MarkerArray, '/nav_markers', 10)
 
+        # Publishers for local path plan and transformed plan
+        self.pub_local_plan = self.create_publisher(Path, '/local_plan', 10)
+        self.pub_transformed_plan = self.create_publisher(Path, '/transformed_global_plan', 10)
+
         # Timer loop for continuous publishing
         self.timer = self.create_timer(1.0 / max(rate, 1.0), self.publish_all_markers)
 
@@ -169,6 +200,12 @@ class NavVisualizerNode(Node):
         self.cmd_vx = msg.linear.x
         self.cmd_wz = msg.angular.z
         self.last_cmd_time = time.time()
+
+    def nav2_decision_cb(self, msg: String):
+        self.nav2_decision_text = msg.data
+
+    def mppi_state_cb(self, msg: String):
+        self.mppi_scene_state = msg.data
 
     def scan_cb(self, msg: LaserScan):
         min_d = 99.0
@@ -251,6 +288,7 @@ class NavVisualizerNode(Node):
         cross_track_err = 0.0
         dist_to_goal = 0.0
 
+        local_trajectory_pts = []
         if self.global_path and len(self.global_path) > 1:
             # Find closest point on global path to robot
             closest_idx = 0
@@ -261,10 +299,78 @@ class NavVisualizerNode(Node):
                     min_dist_sq = d2
                     closest_idx = idx
 
-            # Lookahead: ~0.8m ahead along path (or at least 8 waypoints)
-            lookahead_idx = min(closest_idx + 12, len(self.global_path) - 1)
+            # Lookahead: ~0.60m ahead along path by metric distance
+            target_lookahead_dist = 0.60
+            accum_dist = 0.0
+            lookahead_idx = closest_idx
+            for idx in range(closest_idx, len(self.global_path) - 1):
+                p1 = self.global_path[idx]
+                p2 = self.global_path[idx + 1]
+                accum_dist += math.hypot(p2[0] - p1[0], p2[1] - p1[1])
+                if accum_dist >= target_lookahead_dist:
+                    lookahead_idx = idx + 1
+                    break
+            else:
+                lookahead_idx = len(self.global_path) - 1
+
             lx, ly, lz = self.global_path[lookahead_idx]
             lookahead_pt_map = (lx, ly, lz)
+
+            # Generate Pure Pursuit local trajectory arc from robot to lookahead carrot
+            dx = lx - map_x
+            dy = ly - map_y
+            cos_y = math.cos(map_yaw)
+            sin_y = math.sin(map_yaw)
+            local_x = cos_y * dx + sin_y * dy
+            local_y = -sin_y * dx + cos_y * dy
+            L_sq = local_x**2 + local_y**2
+
+            arc_pts = []
+            num_arc_steps = 16
+            if abs(local_y) < 0.01 or L_sq < 1e-4:
+                for s in range(num_arc_steps + 1):
+                    frac = s / float(num_arc_steps)
+                    arc_pts.append((map_x + frac * dx, map_y + frac * dy, map_z))
+            else:
+                kappa = 2.0 * local_y / L_sq
+                radius = 1.0 / abs(kappa)
+                center_local_y = math.copysign(radius, local_y)
+                angle_span = 2.0 * math.atan2(local_y, local_x)
+                start_angle = -math.copysign(math.pi / 2.0, local_y)
+                for s in range(num_arc_steps + 1):
+                    frac = s / float(num_arc_steps)
+                    theta = start_angle + frac * angle_span
+                    pt_local_x = radius * math.cos(theta)
+                    pt_local_y = center_local_y + radius * math.sin(theta)
+                    pt_x = map_x + cos_y * pt_local_x - sin_y * pt_local_y
+                    pt_y = map_y + sin_y * pt_local_x + cos_y * pt_local_y
+                    arc_pts.append((pt_x, pt_y, map_z))
+
+            # Append forward segment of global path for ~2.5m (local planning horizon)
+            local_trajectory_pts = list(arc_pts)
+            horizon_dist = 2.5
+            accum_horizon = 0.0
+            for idx in range(lookahead_idx, len(self.global_path) - 1):
+                p1 = self.global_path[idx]
+                p2 = self.global_path[idx + 1]
+                accum_horizon += math.hypot(p2[0] - p1[0], p2[1] - p1[1])
+                local_trajectory_pts.append((p2[0], p2[1], p2[2]))
+                if accum_horizon >= horizon_dist:
+                    break
+
+            # Publish local plan to /local_plan and /transformed_global_plan
+            local_path_msg = Path()
+            local_path_msg.header.stamp = self.get_clock().now().to_msg()
+            local_path_msg.header.frame_id = self.global_path_frame
+            for px, py, pz in local_trajectory_pts:
+                ps = PoseStamped()
+                ps.header = local_path_msg.header
+                ps.pose.position.x = px
+                ps.pose.position.y = py
+                ps.pose.position.z = pz
+                local_path_msg.poses.append(ps)
+            self.pub_local_plan.publish(local_path_msg)
+            self.pub_transformed_plan.publish(local_path_msg)
 
             # Compute path tangent heading around lookahead point
             prev_idx = max(0, lookahead_idx - 3)
@@ -478,6 +584,8 @@ class NavVisualizerNode(Node):
         hud.pose.orientation.w = 1.0
         hud.scale.z = 0.10
 
+        mppi_extra = f"\nMPPI:  {self.mppi_scene_state}" if getattr(self, 'mppi_scene_state', None) else ""
+        nav2_extra = f"\nNAV2:  {self.nav2_decision_text}" if self.nav2_decision_text else ""
         hud.text = (
             f"=== HOSPOBOT DECISION MONITOR ===\n"
             f"STATE: {decision_state}\n"
@@ -485,6 +593,8 @@ class NavVisualizerNode(Node):
             f"ALIGN: Error: {heading_err_deg:+.1f}°  |  Cross-Track: {cross_track_err:.2f}m\n"
             f"OBS:   Min Clearance: {self.min_obstacle_dist:.2f}m  |  475mm Square Footprint\n"
             f"GOAL:  Dist Remaining: {dist_to_goal:.1f}m"
+            f"{mppi_extra}"
+            f"{nav2_extra}"
         )
         hud.color.r = state_color[0]
         hud.color.g = state_color[1]
@@ -641,23 +751,39 @@ class NavVisualizerNode(Node):
             lk_line.points.append(Point(x=lx, y=ly, z=lz + 0.08))
             markers.markers.append(lk_line)
 
-        # 8. Local Controller Rollout Plan (Vibrant Amber)
-        if self.local_path and len(self.local_path) > 1:
+        # 8. Local Controller Rollout Plan (Vibrant Amber / Gold)
+        pts_to_draw = self.local_path if (self.local_path and len(self.local_path) > 1) else local_trajectory_pts
+        if pts_to_draw and len(pts_to_draw) > 1:
             local_line = Marker()
             local_line.header.stamp = stamp_zero
-            local_line.header.frame_id = self.local_path_frame
+            local_line.header.frame_id = self.global_path_frame
             local_line.ns = 'local_path_line'
             local_line.id = 400
             local_line.type = Marker.LINE_STRIP
             local_line.action = Marker.ADD
             local_line.pose.orientation.w = 1.0
-            local_line.scale.x = 0.035
-            local_line.color.r, local_line.color.g, local_line.color.b, local_line.color.a = 1.0, 0.65, 0.0, 0.90
+            local_line.scale.x = 0.055
+            local_line.color.r, local_line.color.g, local_line.color.b, local_line.color.a = 1.0, 0.60, 0.0, 0.95
 
-            for px, py, pz in self.local_path:
-                local_line.points.append(Point(x=px, y=py, z=pz + 0.035))
+            local_spheres = Marker()
+            local_spheres.header.stamp = stamp_zero
+            local_spheres.header.frame_id = self.global_path_frame
+            local_spheres.ns = 'local_path_waypoints'
+            local_spheres.id = 401
+            local_spheres.type = Marker.SPHERE_LIST
+            local_spheres.action = Marker.ADD
+            local_spheres.pose.orientation.w = 1.0
+            local_spheres.scale.x, local_spheres.scale.y, local_spheres.scale.z = 0.075, 0.075, 0.075
+            local_spheres.color.r, local_spheres.color.g, local_spheres.color.b, local_spheres.color.a = 1.0, 0.85, 0.1, 0.90
+
+            for idx, (px, py, pz) in enumerate(pts_to_draw):
+                pt = Point(x=px, y=py, z=pz + 0.035)
+                local_line.points.append(pt)
+                if idx % 4 == 0 or idx == len(pts_to_draw) - 1:
+                    local_spheres.points.append(pt)
 
             markers.markers.append(local_line)
+            markers.markers.append(local_spheres)
 
         # Publish marker array
         if markers.markers:

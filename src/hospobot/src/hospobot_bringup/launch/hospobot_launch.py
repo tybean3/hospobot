@@ -86,10 +86,10 @@ def generate_launch_description():
             'invert_odom_right': False,
             'heartbeat_timeout': 2.0,
             'swivel_assist_vel': 0.0,
-            'publish_tf': True,
+            'publish_tf': False,
             'odom_frame': 'odom_wheel',
             'max_linear': PythonExpression(["0.25 if '", nav_mode, "' == 'mapping' else 1.05"]),
-            'accel_limit': PythonExpression(["0.6 if '", nav_mode, "' == 'mapping' else 2.0"])
+            'accel_limit': PythonExpression(["0.6 if '", nav_mode, "' == 'mapping' else 0.8"])
         }],
         remappings=[
             ('/odom', '/odom_can')
@@ -161,7 +161,6 @@ def generate_launch_description():
         parameters=[{
             'frame_id': 'base_footprint',
             'odom_frame_id': 'odom',
-            'guess_frame_id': 'odom_wheel',              # Uses wheel motion prior through featureless corridors
             'publish_tf': True,
             'wait_for_transform': 0.2,
             'expected_update_rate': 10.0,
@@ -187,7 +186,7 @@ def generate_launch_description():
         executable='nav2_manager_node',
         name='nav2_manager_node',
         output='screen',
-        condition=IfCondition(PythonExpression(["'", nav_mode, "' not in ['driving', 'localization']"]))
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' not in ['driving', 'localization', 'autonav', 'auto_nav', 'nav']"]))
     )
 
     # 5b. RTAB-Map RGB-D Odometry - REMOVED (Using On-Device VIO instead)
@@ -197,20 +196,20 @@ def generate_launch_description():
         executable='pointcloud_to_laserscan_node',
         name='pointcloud_to_laserscan',
         remappings=[
-            ('cloud_in', '/oakd/points'),
-            ('scan', '/scan')
+            ('cloud_in', '/oak/points'),
+            ('scan', '/oakd/depth_scan')
         ],
         parameters=[{
-            'target_frame': 'virtual_laser_link',
-            'transform_tolerance': 0.5,
-            'min_height': 0.3,
-            'max_height': 1.0,
+            'target_frame': 'base_footprint',
+            'transform_tolerance': 0.2,
+            'min_height': 0.15,
+            'max_height': 1.6,
             'angle_min': -0.7005,
             'angle_max': 0.7005,
-            'angle_increment': 0.01,
-            'scan_time': 0.33,
-            'range_min': 0.2,
-            'range_max': 3.5,
+            'angle_increment': 0.0087,
+            'scan_time': 0.067,
+            'range_min': 0.25,
+            'range_max': 4.5,
             'use_inf': True
         }],
         output='screen'
@@ -285,7 +284,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             os.path.join(nav2_bringup_dir, 'launch', 'localization_launch.py')
         ),
-        condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'localization'"])),
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' in ['localization', 'autonav', 'auto_nav', 'nav']"])),
         launch_arguments={
             'map': map_yaml_file,
             'use_sim_time': use_sim_time,
@@ -299,7 +298,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             os.path.join(nav2_bringup_dir, 'launch', 'navigation_launch.py')
         ),
-        condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'localization'"])),
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' in ['localization', 'autonav', 'auto_nav', 'nav']"])),
         launch_arguments={
             'use_sim_time': use_sim_time,
             'params_file': nav2_params_file,
@@ -307,12 +306,65 @@ def generate_launch_description():
         }.items()
     )
 
+    # 9e. Nav2 Decision Logger Node (Live Decision Tracking & Root-Cause Logging)
+    nav2_decision_logger_node = Node(
+        package='hospobot_bringup',
+        executable='nav2_decision_logger.py',
+        name='nav2_decision_logger',
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' in ['localization', 'autonav', 'auto_nav', 'nav']"])),
+        parameters=[{
+            'log_file_path': '/home/hospobot/hospobot_ws/log/nav2_decisions.log',
+            'publish_rate': 5.0,
+            'rotate_to_heading_threshold_deg': 48.7,
+            'lookahead_dist': 0.65
+        }]
+    )
+
+    # 9f. Dynamic Intelligent MPPI Scene Tuner (Context-Aware Real-Time Parameter Adaptor)
+    dynamic_mppi_tuner_node = Node(
+        package='hospobot_bringup',
+        executable='dynamic_mppi_tuner.py',
+        name='dynamic_mppi_tuner',
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' in ['localization', 'autonav', 'auto_nav', 'nav']"])),
+        parameters=[{
+            'controller_node_name': 'controller_server',
+            'smoother_node_name': 'velocity_smoother',
+            'update_rate': 10.0,
+            'detection_horizon_m': 3.8,
+            'revert_delay_s': 0.8
+        }]
+    )
+
+    # 9g. Navigation Recovery Node (Cloud AI & Sensor-Fused Automatic Extrication)
+    navigation_recovery_node = Node(
+        package='hospobot_bringup',
+        executable='navigation_recovery_node.py',
+        name='navigation_recovery_node',
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' in ['localization', 'autonav', 'auto_nav', 'nav']"])),
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            'camera_topic': '/oak/rgb/image_raw',
+            'laser_topic': '/scan_nav',
+            'raw_laser_topic': '/scan',
+            'max_recovery_attempts': 3,
+            'backup_speed': 0.08,
+            'pivot_speed': 0.35,
+            'backup_dist_nominal': 0.40,
+            'min_front_clearance': 0.65,
+            'auto_resume_navigation': True,
+            'log_file_path': '/home/hospobot/hospobot_ws/log/nav2_recovery.log'
+        }]
+    )
+
     # 9c. Nav2 Costmap Filter (Keep-Out Zones & Virtual Walls)
     keepout_yaml_file = PythonExpression([
         "'", map_yaml_file, "'.replace('.yaml', '_keepout.yaml')"
     ])
     has_keepout = PythonExpression([
-        "__import__('os').path.exists('", map_yaml_file, "'.replace('.yaml', '_keepout.yaml')) and '", nav_mode, "' == 'localization'"
+        "__import__('os').path.exists('", map_yaml_file, "'.replace('.yaml', '_keepout.yaml')) and '", nav_mode, "' in ['localization', 'autonav', 'auto_nav', 'nav']"
     ])
 
     filter_mask_server_node = Node(
@@ -394,7 +446,8 @@ def generate_launch_description():
         package='hospobot_perception',
         executable='object_detector',
         name='object_detector',
-        output='screen'
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' in ['localization', 'autonav', 'auto_nav', 'nav']"]))
     )
     
     # 12. Semantic Projection Node
@@ -505,7 +558,7 @@ def generate_launch_description():
         executable='nav_visualizer_node',
         name='nav_visualizer_node',
         output='screen',
-        condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'localization'"])),
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' in ['localization', 'autonav', 'auto_nav', 'nav']"])),
         parameters=[{
             'map_frame': 'map',
             'base_frame': 'base_footprint',
@@ -519,7 +572,11 @@ def generate_launch_description():
         executable='semantic_costmap_publisher.py',
         name='semantic_costmap_publisher',
         output='screen',
-        condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'localization'"]))
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' in ['localization', 'autonav', 'auto_nav', 'nav']"])),
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            'publish_debug_tf': False
+        }]
     )
 
     # 22. VLM Semantic Intervention Server (Vision-Language Action Bias Server)
@@ -528,7 +585,8 @@ def generate_launch_description():
         executable='vlm_intervention_server.py',
         name='vlm_intervention_server',
         output='screen',
-        condition=IfCondition(PythonExpression(["'", nav_mode, "' == 'localization'"]))
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' in ['localization', 'autonav', 'auto_nav', 'nav']"])),
+        parameters=[{'use_sim_time': use_sim_time}]
     )
 
     return LaunchDescription([
@@ -555,7 +613,9 @@ def generate_launch_description():
         costmap_filter_info_server_node,
         lifecycle_manager_costmap_filters,
         nav2_manager_node,
-        # pc_to_laser_node, # Disabled to avoid duplicate scan topics
+        nav2_decision_logger_node,
+        dynamic_mppi_tuner_node,
+        pc_to_laser_node, # 3D Depth Camera projected scan with inf-clearing for real-time obstacle clearing
         web_server,
         mapping_web_server,
         camera_node,
@@ -570,6 +630,10 @@ def generate_launch_description():
         footprint_publisher_node,
         robot_fov_indicator_node,
         nav_visualizer_node,
+        object_detector_node,
+        # semantic_projection_node, # Handled directly by object_detector_node
+        # semantic_tracker_node, # Disabled: object_detector_node directly publishes /semantic/tracked_objects
         semantic_costmap_publisher_node,
-        vlm_intervention_server_node
+        vlm_intervention_server_node,
+        navigation_recovery_node
     ])

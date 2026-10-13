@@ -6,6 +6,8 @@
 #include <nav2_costmap_2d/layered_costmap.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <mutex>
+#include <vector>
+#include <utility>
 
 namespace hospobot_semantic
 {

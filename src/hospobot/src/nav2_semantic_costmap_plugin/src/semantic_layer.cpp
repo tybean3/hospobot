@@ -2,6 +2,8 @@
 #include <nav2_costmap_2d/costmap_math.hpp>
 #include <pluginlib/class_list_macros.hpp>
 #include <cmath>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <tf2/LinearMath/Transform.h>
 
 PLUGINLIB_EXPORT_CLASS(nav2_semantic_costmap_plugin::SemanticLayer, nav2_costmap_2d::Layer)
 
@@ -71,6 +73,15 @@ void SemanticLayer::updateBounds(
   double * max_x, double * max_y)
 {
   std::lock_guard<std::mutex> lock(data_mutex_);
+  
+  if (has_last_bounds_) {
+    *min_x = std::min(*min_x, last_min_x_);
+    *min_y = std::min(*min_y, last_min_y_);
+    *max_x = std::max(*max_x, last_max_x_);
+    *max_y = std::max(*max_y, last_max_y_);
+  }
+  has_last_bounds_ = false;
+
   if (!latest_objects_) {
     return;
   }
@@ -84,19 +95,49 @@ void SemanticLayer::updateBounds(
     return; // Stale data
   }
 
+  double curr_min_x = 1e9, curr_min_y = 1e9, curr_max_x = -1e9, curr_max_y = -1e9;
+  bool bounds_updated = false;
+
+  geometry_msgs::msg::TransformStamped transform;
+  try {
+    transform = tf_->lookupTransform(
+      layered_costmap_->getGlobalFrameID(), latest_objects_->header.frame_id, tf2::TimePointZero);
+  } catch (tf2::TransformException & ex) {
+    return;
+  }
+
   for (const auto& obj : latest_objects_->objects) {
     if (rules_.find(obj.class_name) == rules_.end()) {
       continue; // No rule for this class
     }
 
-    double radius = rules_[obj.class_name].inflation_radius;
-    double x = obj.position.x;
-    double y = obj.position.y;
+    geometry_msgs::msg::Point pt_in;
+    pt_in.x = obj.position.x; pt_in.y = obj.position.y; pt_in.z = obj.position.z;
+    geometry_msgs::msg::Point pt_out;
+    tf2::doTransform(pt_in, pt_out, transform);
 
-    *min_x = std::min(*min_x, x - radius);
-    *min_y = std::min(*min_y, y - radius);
-    *max_x = std::max(*max_x, x + radius);
-    *max_y = std::max(*max_y, y + radius);
+    double radius = rules_[obj.class_name].inflation_radius;
+    double x = pt_out.x;
+    double y = pt_out.y;
+
+    curr_min_x = std::min(curr_min_x, x - radius);
+    curr_min_y = std::min(curr_min_y, y - radius);
+    curr_max_x = std::max(curr_max_x, x + radius);
+    curr_max_y = std::max(curr_max_y, y + radius);
+    bounds_updated = true;
+  }
+
+  if (bounds_updated) {
+    *min_x = std::min(*min_x, curr_min_x);
+    *min_y = std::min(*min_y, curr_min_y);
+    *max_x = std::max(*max_x, curr_max_x);
+    *max_y = std::max(*max_y, curr_max_y);
+    
+    last_min_x_ = curr_min_x;
+    last_min_y_ = curr_min_y;
+    last_max_x_ = curr_max_x;
+    last_max_y_ = curr_max_y;
+    has_last_bounds_ = true;
   }
 }
 
@@ -118,6 +159,14 @@ void SemanticLayer::updateCosts(
     return; // Stale data
   }
 
+  geometry_msgs::msg::TransformStamped transform;
+  try {
+    transform = tf_->lookupTransform(
+      layered_costmap_->getGlobalFrameID(), latest_objects_->header.frame_id, tf2::TimePointZero);
+  } catch (tf2::TransformException & ex) {
+    return;
+  }
+
   for (const auto& obj : latest_objects_->objects) {
     if (rules_.find(obj.class_name) == rules_.end()) {
       continue;
@@ -126,8 +175,13 @@ void SemanticLayer::updateCosts(
     int base_cost = rules_[obj.class_name].cost_amplitude;
     double radius = rules_[obj.class_name].inflation_radius;
 
+    geometry_msgs::msg::Point pt_in;
+    pt_in.x = obj.position.x; pt_in.y = obj.position.y; pt_in.z = obj.position.z;
+    geometry_msgs::msg::Point pt_out;
+    tf2::doTransform(pt_in, pt_out, transform);
+
     unsigned int mx, my;
-    if (!master_grid.worldToMap(obj.position.x, obj.position.y, mx, my)) {
+    if (!master_grid.worldToMap(pt_out.x, pt_out.y, mx, my)) {
       continue;
     }
 

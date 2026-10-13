@@ -13,6 +13,7 @@ find_package(nav2_core REQUIRED)
 find_package(nav2_costmap_2d REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -48,7 +49,7 @@ target_include_directories(deadlock_detector_condition PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_definitions(deadlock_detector_condition PRIVATE BT_PLUGIN_EXPORT)
 ament_target_dependencies(deadlock_detector_condition
-  rclcpp behaviortree_cpp geometry_msgs)
+  rclcpp behaviortree_cpp geometry_msgs nav_msgs)
 
 add_library(vlm_semantic_intervention_action SHARED src/vlm_semantic_intervention_action.cpp)
 target_include_directories(vlm_semantic_intervention_action PUBLIC

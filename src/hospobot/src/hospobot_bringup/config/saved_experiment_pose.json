@@ -1,0 +1,41 @@
+{
+  "description": "Saved initial pose estimate for repeatable navigation experiments",
+  "map": "Building6-Floor1",
+  "initial_pose": {
+    "x": 33.226,
+    "y": -30.233,
+    "z": 0.0,
+    "yaw_rad": -0.641,
+    "yaw_deg": -36.726,
+    "orientation": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": -0.31508,
+      "w": 0.94906
+    },
+    "covariance": [
+      0.25, 0.0, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.25, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0685
+    ]
+  },
+  "experiment_clutter_and_recovery": {
+    "name": "Clutter & Recovery",
+    "map": "Building6-Floor1",
+    "goal_pose": {
+      "x": 39.0,
+      "y": -38.0,
+      "z": 0.0,
+      "yaw_rad": -0.641,
+      "orientation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": -0.31508,
+        "w": 0.94906
+      }
+    }
+  }
+}

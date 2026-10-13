@@ -47,6 +47,8 @@ protected:
     double inflation_radius;
   };
   std::unordered_map<std::string, SemanticRule> rules_;
+  double last_min_x_, last_min_y_, last_max_x_, last_max_y_;
+  bool has_last_bounds_{false};
 };
 
 }  // namespace nav2_semantic_costmap_plugin

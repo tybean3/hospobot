@@ -98,9 +98,23 @@ def generate_launch_description():
         ],
         parameters=[{'use_sim_time': True}],
         remappings=[
-            ('/model/hospobot/tf', '/tf')
+            ('/model/hospobot/tf', '/tf'),
+            ('/scan', '/scan_raw')
         ],
         output='screen'
+    )
+
+    # 3.6 Laser Filter Node (Publishes /scan for AMCL/SLAM and /scan_nav for obstacle avoidance)
+    laser_filter_node = Node(
+        package='hospobot_perception',
+        executable='laser_filter_node',
+        name='laser_filter_node',
+        output='screen',
+        parameters=[{
+            'flip_angles': False,
+            'nav_mode': nav_mode,
+            'use_sim_time': use_sim_time
+        }]
     )
 
     # 4. Teleop Control
@@ -191,6 +205,51 @@ def generate_launch_description():
         parameters=[{'use_sim_time': True}]
     )
 
+    # 8. Semantic Costmap Publisher (Dense Context-Aware Costmap Prediction)
+    semantic_costmap_publisher_node = Node(
+        package='hospobot_semantic',
+        executable='semantic_costmap_publisher.py',
+        name='semantic_costmap_publisher',
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' in ['localization', 'autonav', 'auto_nav', 'nav']"])),
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            'publish_debug_tf': False
+        }]
+    )
+
+    # 8.5 VLM Semantic Intervention Server
+    vlm_intervention_server_node = Node(
+        package='hospobot_semantic',
+        executable='vlm_intervention_server.py',
+        name='vlm_intervention_server',
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' in ['localization', 'autonav', 'auto_nav', 'nav']"])),
+        parameters=[{'use_sim_time': use_sim_time}]
+    )
+
+    # 9. Navigation Recovery Node (Cloud AI & Sensor-Fused Automatic Extrication)
+    navigation_recovery_node = Node(
+        package='hospobot_bringup',
+        executable='navigation_recovery_node.py',
+        name='navigation_recovery_node',
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", nav_mode, "' in ['localization', 'autonav', 'auto_nav', 'nav']"])),
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            'camera_topic': '/oakd_camera/image',
+            'laser_topic': '/scan_nav',
+            'raw_laser_topic': '/scan',
+            'max_recovery_attempts': 3,
+            'backup_speed': 0.08,
+            'pivot_speed': 0.35,
+            'backup_dist_nominal': 0.40,
+            'min_front_clearance': 0.65,
+            'auto_resume_navigation': True,
+            'log_file_path': '/home/hospobot/hospobot_ws/log/nav2_recovery.log'
+        }]
+    )
+
     return LaunchDescription([
         set_env_action,
         DeclareLaunchArgument('use_sim_time', default_value='true', description='Use simulation (Gazebo) clock if true'),
@@ -201,9 +260,13 @@ def generate_launch_description():
         web_server,
         spawn_entity,
         bridge_node,
+        laser_filter_node,
         joy_node,
         teleop_twist_joy_node,
         rtabmap_node,
         localization_node,
-        nav2_manager_node
+        nav2_manager_node,
+        semantic_costmap_publisher_node,
+        vlm_intervention_server_node,
+        navigation_recovery_node
     ])

@@ -1,13 +1,13 @@
 <!--
-  This Behavior Tree replans the global path periodically at 1 Hz and it also has
-  recovery actions specific to the robot such as spin and backup, but prioritizes
-  a Semantic Intervention based on VLM reasoning before resorting to blind recoveries.
+  This Behavior Tree replans the global path periodically at 10 Hz synchronized with the
+  costmap updates and it also has recovery actions specific to the robot such as spin and backup,
+  but prioritizes a Semantic Intervention based on VLM reasoning before resorting to blind recoveries.
 -->
 <root BTCPP_format="4" main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
-    <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+    <RecoveryNode number_of_retries="2" name="NavigateRecovery">
       <PipelineSequence name="NavigateWithReplanning">
-        <RateController hz="1.0">
+        <RateController hz="10.0">
           <RecoveryNode number_of_retries="1" name="ComputePathToPose">
             <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
             <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
@@ -26,22 +26,21 @@
           <!-- Semantic Intervention Branch -->
           <Sequence name="SemanticRecoveryBranch">
             <!-- Event Trigger: Checks if robot is stuck/oscillating -->
-            <DeadlockDetector oscillation_timeout="5.0" min_progress_distance="0.5"/>
+            <DeadlockDetector oscillation_timeout="3.0" min_progress_distance="0.3"/>
             <!-- Action Trigger: Queries VLM and guides robot out -->
-            <VLMSemanticIntervention camera_topic="/oak/rgb/image_raw" short_term_bias="{bias_goal}"/>
+            <VLMSemanticIntervention camera_topic="/oakd_camera/image" short_term_bias="{bias_goal}"/>
             <!-- If VLM returned a short term goal, follow it -->
             <ComputePathToPose goal="{bias_goal}" path="{bias_path}" planner_id="GridBased"/>
             <FollowPath path="{bias_path}" controller_id="FollowPath"/>
           </Sequence>
 
-          <!-- Standard Blind Recoveries -->
+          <!-- Safe Recoveries (No blind reversing into unobserved areas!) -->
           <Sequence name="ClearingActions">
             <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
             <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
           </Sequence>
-          <Spin spin_dist="1.57"/>
-          <Wait wait_duration="5"/>
-          <BackUp backup_dist="0.30" backup_speed="0.05"/>
+          <Spin spin_dist="0.785"/>
+          <Wait wait_duration="1"/>
         </RoundRobin>
       </ReactiveFallback>
     </RecoveryNode>

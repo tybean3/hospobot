@@ -8,9 +8,18 @@
 #include "rclcpp/rclcpp.hpp"
 #include "behaviortree_cpp/condition_node.h"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 
 namespace hospobot_semantic
 {
+
+struct StampedPoint
+{
+  rclcpp::Time stamp;
+  double x;
+  double y;
+};
 
 class DeadlockDetectorCondition : public BT::ConditionNode
 {
@@ -28,18 +37,20 @@ public:
   static BT::PortsList providedPorts()
   {
     return {
-      BT::InputPort<double>("oscillation_timeout", 5.0, "Time in seconds to check for oscillation/deadlock"),
-      BT::InputPort<double>("min_progress_distance", 0.5, "Minimum distance to consider as progress")
+      BT::InputPort<double>("oscillation_timeout", 3.0, "Time in seconds to check for oscillation/deadlock"),
+      BT::InputPort<double>("min_progress_distance", 0.3, "Minimum distance to consider as progress")
     };
   }
 
 private:
-  void poseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+  void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg);
+  void amclCallback(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg);
 
   rclcpp::Node::SharedPtr node_;
-  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr pose_sub_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr amcl_sub_;
 
-  std::deque<geometry_msgs::msg::PoseStamped> pose_history_;
+  std::deque<StampedPoint> pose_history_;
   double oscillation_timeout_;
   double min_progress_distance_;
   std::mutex pose_mutex_;

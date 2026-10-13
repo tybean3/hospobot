@@ -12,31 +12,58 @@ DeadlockDetectorCondition::DeadlockDetectorCondition(
   node_ = config().blackboard->get<rclcpp::Node::SharedPtr>("node");
 
   if (!getInput("oscillation_timeout", oscillation_timeout_)) {
-    oscillation_timeout_ = 5.0;
+    oscillation_timeout_ = 3.0;
   }
   if (!getInput("min_progress_distance", min_progress_distance_)) {
-    min_progress_distance_ = 0.5;
+    min_progress_distance_ = 0.3;
   }
 
-  pose_sub_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>(
+  // Subscribe to /odom for high-frequency motion tracking
+  odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+    "/odom", 10,
+    std::bind(&DeadlockDetectorCondition::odomCallback, this, std::placeholders::_1));
+
+  // Also subscribe to /amcl_pose with correct PoseWithCovarianceStamped type
+  amcl_sub_ = node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
     "/amcl_pose", 10,
-    std::bind(&DeadlockDetectorCondition::poseCallback, this, std::placeholders::_1));
+    std::bind(&DeadlockDetectorCondition::amclCallback, this, std::placeholders::_1));
 }
 
 DeadlockDetectorCondition::~DeadlockDetectorCondition()
 {
 }
 
-void DeadlockDetectorCondition::poseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+void DeadlockDetectorCondition::odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg)
 {
   std::lock_guard<std::mutex> lock(pose_mutex_);
-  pose_history_.push_back(*msg);
-  
+  StampedPoint pt;
+  pt.stamp = rclcpp::Time(msg->header.stamp);
+  pt.x = msg->pose.pose.position.x;
+  pt.y = msg->pose.pose.position.y;
+  pose_history_.push_back(pt);
+
   auto now = node_->now();
-  // Remove old poses
   while (!pose_history_.empty()) {
-    auto pose_time = rclcpp::Time(pose_history_.front().header.stamp);
-    if ((now - pose_time).seconds() > oscillation_timeout_) {
+    if ((now - pose_history_.front().stamp).seconds() > oscillation_timeout_) {
+      pose_history_.pop_front();
+    } else {
+      break;
+    }
+  }
+}
+
+void DeadlockDetectorCondition::amclCallback(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
+{
+  std::lock_guard<std::mutex> lock(pose_mutex_);
+  StampedPoint pt;
+  pt.stamp = rclcpp::Time(msg->header.stamp);
+  pt.x = msg->pose.pose.position.x;
+  pt.y = msg->pose.pose.position.y;
+  pose_history_.push_back(pt);
+
+  auto now = node_->now();
+  while (!pose_history_.empty()) {
+    if ((now - pose_history_.front().stamp).seconds() > oscillation_timeout_) {
       pose_history_.pop_front();
     } else {
       break;
@@ -47,26 +74,24 @@ void DeadlockDetectorCondition::poseCallback(const geometry_msgs::msg::PoseStamp
 BT::NodeStatus DeadlockDetectorCondition::tick()
 {
   std::lock_guard<std::mutex> lock(pose_mutex_);
-  
+
   if (pose_history_.empty()) {
     return BT::NodeStatus::FAILURE; // Not enough data
   }
 
-  // Calculate distance traveled within the timeout window
   auto start_pose = pose_history_.front();
   auto end_pose = pose_history_.back();
 
-  double dx = end_pose.pose.position.x - start_pose.pose.position.x;
-  double dy = end_pose.pose.position.y - start_pose.pose.position.y;
+  double dx = end_pose.x - start_pose.x;
+  double dy = end_pose.y - start_pose.y;
   double distance = std::hypot(dx, dy);
 
-  // If distance is less than minimum progress, we might be deadlocked or oscillating
-  // Ensure we have at least half of the timeout window of data
-  auto start_time = rclcpp::Time(start_pose.header.stamp);
-  auto end_time = rclcpp::Time(end_pose.header.stamp);
-  if ((end_time - start_time).seconds() > (oscillation_timeout_ / 2.0)) {
+  // If distance is less than minimum progress over at least half the timeout window, trigger deadlock intervention
+  auto now = node_->now();
+  if ((now - start_pose.stamp).seconds() > (oscillation_timeout_ / 2.0)) {
     if (distance < min_progress_distance_) {
-      RCLCPP_WARN(node_->get_logger(), "Deadlock/Oscillation detected! Progress: %f m", distance);
+      RCLCPP_WARN(node_->get_logger(), "Deadlock/Oscillation detected! Progress: %.3f m in %.1fs",
+                  distance, (now - start_pose.stamp).seconds());
       return BT::NodeStatus::SUCCESS; // Trigger semantic intervention
     }
   }
